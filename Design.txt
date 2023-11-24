@@ -1,0 +1,305 @@
+Scar programmeringssprog:
+Program starter i funktionen "main" medmindre brugeren specificerer andet.
+
+Hav en Type non-terminal, der evalueres til en type fra AbSyn såsom int, char, bool, eller en array heraf. Void er også acceptabelt.
+
+size() returnerer antallet af bytes der bruges på et givent objekt. size() med et array af integers vil altså returnere længden af arrayet ganget med størrelsen af et integer.
+Hvis programmøren vil have et elements størrelse, må de bare trække et element ud og give det som argument til size().
+
+#start Id
+Funktion programmet skal starte i. Fungerer kun hvis denne fil er den første der bliver kompileret. Hvis den i stedet inkluderes, er det ignoreret.
+#include Id
+#define Id ...
+#asm/
+#/
+
+Type -> float
+Type -> double
+Type -> int64
+Type -> int32
+Type -> int16
+Type -> int8
+Type -> int
+Type -> uint64
+Type -> uint32
+Type -> uint16
+Type -> uint8
+Type -> uint
+Type -> char
+Type -> string
+Type -> bool
+Type -> null
+Type -> [ Type ]
+Type -> Id
+Type -> typeof ( Exp )
+Type -> ( Types )
+Types -> Type, Types
+Types -> Type
+Exp -> Id
+Exp -> Bool
+Bool -> true
+Bool -> false
+Exp -> Exp Binop Exp
+Exp -> Id Index
+Exp -> { Exps }
+Exp -> ( Exps )
+Exp -> range ( Exp, Exp )
+Exp -> range ( Exp, Exp, Exp )
+Exp -> sum ( Exps )
+Exp -> sum ( range ( Exp, Exp ) )
+        = sum_range ( Exp, Exp )
+Uses Gauss algorithm (z(z+1)) / n
+The optimiser will check if the input array to sum() was created by range() (and hasn't been mutated since), and if so use the O(1) algorithm instead. It won't actually loop through the array, though.
+Exp -> prod ( Exps )
+Exp -> length ( Exps )
+Exp -> iota ( Exp )
+Exp -> map ( Fun, Exps )
+Exp -> reduce ( Fun, Exp, Exps )
+Exp -> replicate ( Exp, Exp )
+Exp -> filter ( Fun, Exps )
+Exp -> scan ( Fun, Exp, Exps )
+Exp -> forall ( Fun, Exps )
+Exp -> forany ( Fun, Exps )
+Exp -> Exp ^ Exp
+Exp -> Exp ** Exp
+Exp -> - Exp
+Exp -> Exps :: Exps
+Exp -> Exps .tail
+Exp -> Exps .head
+Exp -> Exps .last
+Exp -> Exps .max
+Exp -> Exps .min
+Exp -> Exps .argmax
+Exp -> Exps .argmin
+Exp -> Exps .length
+Exp -> size ( Exps ) 
+Exp -> typeof ( Exp )
+Exp -> Exp % Exp
+Exp -> Exp ++
+Exp -> -- Exp
+Exp -> Exp --
+Exp -> -- Exp
+Exp -> Exp Binop = Exp
+Exp -> Exp ! (no associativity; make illegal with anything that might cause doubt)
+Exp -> Type
+Exp -> qsort ( Exps )
+Applies quick-sort algorithm to input array and returns the sorted array. Original is untouched.
+Exp -> rqsort ( Exps )
+As above, but sorted in descending order.
+Exp -> reverse ( Exps )
+Reverses the order of an array. Also works on strings and numbers. Note that numbers have their *decimal* version's digits reversed, as binary numbers can have leading zeroes.
+Exp -> swap ( Exps, Exps, Exps )
+Swap two elements in an array. Takes the indices of the two elements and an input array. Returns a new array with the two elements swapped.
+Exp -> replace ( Exp, Exp, Exps )
+Replace all occurrences of the first term with the second in the input string. Returns the new string. Also works on numbers (in their decimal form) and arrays of any type.
+Exp -> regex ( Exp, Exps )
+Return an array of all matching substrings. First param is regular expression in string format, second is input array or string.
+Exp -> Id [ Exp : Exp ]
+Array splicing. Can include a third Exp to specify step size (default is 1). Returns the new array.
+Exp -> some ( Exp )
+Exp -> none ( Exp )
+Exp -> 0b<num>
+Specify a number in binary format. Saved as an int.
+Exp -> 0x<num>
+Specify a number in hexadecimal format. Saved as an int.
+Exp -> num_to_char ( Exp )
+Converts an integer into a character. NOT in the sense that it puts apostrophes around it, NOR in the sense of converting it into the written word. As in the UTF-8 defined character based on the input number.
+Exp -> char_to_num ( Exp )
+Opposite of previous.
+Exp -> written_num ( Exp )
+1 as argument returns "one", and so on.
+Exp -> char_format ( Exp )
+1 as argument returns "1".
+
+Includes internal "io" library:
+Exp -> read_cli ( Type )
+Exp -> file_info ( Exp )
+Returns a tuple with read/write information, and size. Returns null if the file couldn't be found.
+Exp -> file_history ( Exp )
+Returns a tuple of creation date-time, and last modified date-time.
+Exp -> file_read ( Exp )
+Exp -> file_open ( Exp )
+Report error if the program does not have read access. If the file does not exist, this creates it instead, in which case it will report an error if the program does not have *write* access, either.
+Exp -> file_open_copy ( Exp, Exp )
+Create a new file with the exact contents of the one mentioned, its name specified in second argument. Then opens the file. Errors are reported as expected.
+Exp -> read_next ( Exp )
+Reads and returns next Exp characters in the buffer as a string. If param is omitted, default is 1 character. Does not read past \0. Moves that many characters ahead. Negative Exp reads backwards.
+Exp -> peek_buff ( Exp )
+Reads and returns the next Exp characters in the buffer without moving through them. Negative Exp reads backwards.
+Stat -> file_dup ( Exp, Exp )
+
+Exp -> queue ( Exps )
+Exp -> stack ( Exps )
+Creates a stack/queue structure, optionally initialised with an array, pushed head first.
+Stat -> Exp .push ( Exp )
+Exp -> Exp .pop
+Returns null if structure is empty.
+Exp -> Exp .peek
+Stat -> Exp .clear
+
+Exp -> llist ( Exps )
+Exp -> Exp . insert ( Exp )
+Exp -> Exp . delete ( Exp )
+Exp -> Exp . delete_at ( Exp )
+
+Includes internal "maths"/"math" library:
+Exp -> dot ( Exps, Exps )
+Exp -> cross ( Exps, Exps )
+Exp -> vec_len ( Exps )
+Exp -> vec_deg ( Exps )
+Exp -> vec_rad ( Exps )
+Exp -> vec_add ( Exps )
+Exp -> pi
+Exp -> eul
+        = Euler
+Exp -> tau
+Exp -> sin ( Exp )
+Exp -> cos ( Exp )
+Exp -> tan ( Exp )
+Exp -> isin ( Exp )
+Exp -> icos ( Exp )
+Exp -> itan ( Exp )
+Exp -> inte ( Exp )
+        = integral ( Exp )
+Exp -> diff ( Exp )
+        = differential ( Exp )
+Exp -> sqrt ( Exp )
+Exp -> root ( Exp, Exp )
+Exp -> log ( Exp, Exp )
+Exp -> ln ( Exp )
+Exp -> ilog ( Exp, Exp )
+Exp -> abs ( Exps )
+Exp -> ceil ( Exps )
+Exp -> floor ( Exps )
+The above functions work on a single number or on an array of numbers.
+Stat -> solve ( Exp, Exps )
+Takes an equation and the variable(s) to isolate, and saves the result(s) in the variables. Can specify Type if necessary.
+
+Includes internal "rng" library. Things within square brackets are to indicate optional arguments; they are not actually part of the grammar, just there to save space:
+Stat -> seed ( Exp )
+If not specified, the generator will use the current system time as the seed. Specifying can be useful for debugging and testing, however.
+Stat -> debug_seed ( Exp )
+This statement is omitted if the compiler is run with the "Release" flag. In debug mode, it will be parsed and evaluated as above.
+Exp -> single ( [Type] Exp, [Type] Exp [, Exps] )
+Lower and upper range bounds, as well as an optional array of numbers to never pick.
+Exp -> cell ( Exps[, Exps] )
+Pick and return the index of randomly-chosen array cell. Params: Input array and a list of int tuples, the corresponding cell indices to never pick.
+Exp -> fill ( Exps, [Type] Exp, [Type] Exp [, Exps] )
+Generate an array of random numbers to go into the first array param. Second and third arguments are the bounds, and the final list is an optional list of numbers to never pick.
+
+Includes internal "convert" library:
+Exp -> deg_to_rad ( Exp )
+Exp -> rad_to_deg ( Exp )
+Exp -> k_to_f ( Exp )
+Exp -> k_to_c ( Exp )
+Exp -> c_to_k ( Exp )
+Exp -> c_to_f ( Exp )
+Exp -> f_to_k ( Exp )
+Exp -> f_to_c ( Exp )
+Exp -> ctemp ( Exp, Exp, Exp )
+where the first expression is the number, and the other two are characters to indicate what to convert from and to.
+
+Includes internal "asm" library, which allows the programmer to directly code in machine language:
+Stat -> instructions: Instrs :end
+Instrs -> Instr ; Instrs
+Instrs -> Instr
+Instr -> ... whatever is implemented in the code generator.
+
+Exps -> Exp |> Exps
+Pipe operator takes result of first expression and provides directly as input to next expression, as many in a succession as specified.
+
+Exp -> Cond ? Exp : Exp
+Exp -> Cond
+
+Exps -> Exp, Exps
+Exps -> Exp
+
+Cond -> ! Cond
+Cond -> not Cond
+Cond -> Exp Relop Exp
+Cond -> file_exists ( Exp )
+Cond -> Exp
+
+FunArgs -> Type Id, FunArgs
+FunArgs -> Type Id
+
+FunExp -> Exps ; return Exp ;
+
+Index -> [Exp] Index
+Index -> [Exp]
+Negative indices count from last element. -1 is index of last index, -2 second-last, and so on.
+
+Prog -> FunDec Prog
+Prog -> FunDec
+
+FunDec -> Type Id ( FunArgs ) = { BodyStats }
+
+BodyStats -> Stat ; BodyStats
+BodyStats -> return Exp ;
+
+Stats -> Stat ; Stats
+Stats -> Stat ;
+Stats -> return Exp ;
+
+LimitedStats -> Stat ; LimitedStats
+LimitedStats -> Stat ;
+
+Stat -> static Type Id = Exp
+Stat -> Type Id = Exp
+Stat -> Type Id ( Exps ) = Exp
+Option to specify array (and sub-array) length.
+Stat -> if Cond then Else
+Else -> { Stats } else { Stats }
+Else -> { Stats } elif Cond then Else
+Else -> { Stats }
+Stat -> while ( Cond ) do { LimitedStats }
+Stat -> for ( Type Id = Exp, Cond, Exp ) do { Stats }
+Stat -> repeat { LimitedStats } until Cond
+Stat -> new_type ( Id ) = { LimitedStats }
+Stat -> print ( Exp )
+Stat -> debug_print ( Exp )
+Only shows up when the program is compiled with the debug flag. Otherwise, it is simply omitted.
+Set every  with 0s or 1s.
+Stat -> for Id in Exps do { Stats }
+Stat -> switch Exp: case CaseExp: { Stats } Branch
+CaseExp -> Type Exp
+CaseExp -> Exp
+Branch -> case CaseExp: { Stats } Branch
+Branch -> case CaseExp: { Stats }
+Branch -> default: { Stats }
+
+Fun -> Id
+Fun -> Lambda
+
+Lambda -> fn Type ( FunArgs ): Stats return Exp
+
+Binop er +, -, *, /
+Relop er >, <, ==, >=, <=, &&, ||, ^^ (XOR), og <<->> (XNOR).
+Bitop er <<, >>, &, |, ^, og <->.
+
+0b<num> er binær.
+0x<num> er hexadecimal.
+
+
+Understøtter binære tal. Brugeren vælger selv hvor meget plads der skal allokeres, default er 1B.
+Hexadecimal understøttes også.
+Int4, Int16, Int32, og Int64 understøttes alle. Int32 er default når brugeren skriver "int". Både signed og unsigned. Integers under 64 bits deler registre med andre på accepterende arkitektur.
+Decimaltal understøttes. Alt før punktummet er et Signed Int, alt efter er unsigned. Alt. bare lav floats som forventet, så assembly koden er simplere.
+
+Lexer:
+null hedder "null".
+true/false er Boolean literals.
+
+length(x) returnerer længden på et array. Hvis arrayet er tomt returnerer det 0. Hvis det bruges på et ikke-array giver det en error.
+
+Arrays og variabler er mutable. Hvis de skal fungere mere funktionelt kan "immutable" keyword bruges til at låse dem.
+Arrays kan deklareres til at have en specifik længde og på den måde generere mere effektiv maskinkode, men dette er valgfrit.
+
+Understøtter en masse SOACs, inkl. max, argmax,  fold, replace, split, etc., samt array støttefunktioner så som .exists, findindex, etc.
+
+:: lægger to expressions sammen i en liste. Den ene eller begge kan være lister allerede. Den kan altså bruges som en concatenation, prepend, eller append.
++, når det bruges på lister, concatenerer dem også. Derfor kan man sige "she" + "said" og få "shesaid".
+
+Funktioner er rekursive "by default".
+
+Statements separeres af semi-kolon.
