@@ -72,7 +72,7 @@ Exp -> Exps .min
 Exp -> Exps .argmax
 Exp -> Exps .argmin
 Exp -> Exps .length
-Exp -> size ( Exps ) 
+Exp -> size ( Exps )
 Exp -> typeof ( Exp )
 Exp -> Exp % Exp
 Exp -> Exp ++
@@ -303,3 +303,30 @@ Understøtter en masse SOACs, inkl. max, argmax,  fold, replace, split, etc., sa
 Funktioner er rekursive "by default".
 
 Statements separeres af semi-kolon.
+
+s0 -> s1
+s1 -> Type Id ( -> s2
+s1 -> -> END
+s2 -> Type Id -> s3
+s2 -> ) = -> s4
+s3 -> , -> s2
+s3 -> ) = -> s4
+s4 -> return ; -> s1 (warning)
+s4 -> return Id ; -> s1
+s4 -> Type Id = -> s5
+s5 -> Num ; -> s6
+s5 -> Id ; -> s6
+s5 -> Num/Val BINOP Num/Val ; -> s6
+s6 -> Type Id = -> s5
+s6 -> return ; -> s1
+s6 -> return Id ; -> s1
+
+declare_fun(type, name, body)
+  where body =
+    bind_var(type, name, contents)
+      where contents =
+        binop(type, left, right)
+    then
+    return;
+
+

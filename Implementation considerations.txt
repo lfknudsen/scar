@@ -1,0 +1,8 @@
+Front-end:
+	Use Flex/yacc?
+	Hard-code lexer and/or parser?
+
+Back-end:
+	Use LLVM?
+	Hard-code?
+		Target which architecture? RISC-V or real?

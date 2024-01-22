@@ -1,3 +1,3 @@
-void main():
+void main() =
     int var = 36798;
-    return;
+    return var;
