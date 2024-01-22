@@ -30,18 +30,13 @@
 // Binop		-> +
 // Binop		-> -
 
-/*
-DFA:
-s0 -> s1
-s1 -> Type Id ( -> s2
-s1 -> -> END
-s2 -> Type Id -> s3
-s3 -> , -> s2
-s3 -> ) = { -> s4
-s4 -> Type Id = Exp ; -> s5
-s5 -> Type Id = Exp ; -> s4
-s5 -> return ; -> s1
-*/
+void free_tokens(struct token_index *ti) {
+	for (int i = 0; i < ti->n; i++) {
+		free(ti->ts[i].val);
+	}
+	free(ti->ts);
+	free(ti);
+}
 
 int fail_input() {
 	printf("Scar Compiler usage:\n./scar <filename>");
@@ -64,22 +59,23 @@ int main(int argc, char* argv[]) {
 		fclose(read_ptr);
 		return 1;
 	}
-	struct token_index *t_i = malloc(sizeof(*t_i));
-	t_i->ts = malloc(sizeof(*t_i->ts));
-	t_i->n = 0;
-	t_i->n = lex(read_ptr, write_ptr, t_i);
-	printf("Read %lu tokens.\n", t_i->n);
+	struct token_index *ti = malloc(sizeof(*ti));
+	ti->ts = malloc(sizeof(*ti->ts));
+	ti->n = 0;
+	ti->n = lex(read_ptr, write_ptr, ti);
+	printf("Read %lu tokens.\n", ti->n);
 	fclose(read_ptr);
 	fclose(write_ptr);
 
-	if (t_i->n) {
-		for (int i = 0; i < t_i->n; i++) {
-			printf("Token #%d: %s (%u)\n", i, t_i->ts[i].val, t_i->ts[i].type);
+	if (ti->n) {
+		for (int i = 0; i < ti->n; i++) {
+			printf("Token #%d: %s (%u)\n", i, ti->ts[i].val, ti->ts[i].type);
 		}
 		FILE *token_file = fopen("tokens.out", "r");
 		if (token_file == NULL) { printf("Token file not found.\n"); return 1; }
-		printf("%d\n", parse(token_file, t_i));
+		printf("%d\n", parse(token_file, ti));
 		fclose(token_file);
 	}
+	free_tokens(ti);
 	return 0;
 }
