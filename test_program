@@ -1,3 +1,13 @@
-void main() =
-    int var = 36798;
-    return var;
+void main(int x, int x) =
+    return 1 + 2 + 3 * 4 + 5 * 6 + 7;
+
+int fun2() =
+    return 2;
+
+
+int fun2() =
+    return 3 * var;
+int fun5() =
+    return 3;
+
+int fun4 () = return 5 * 5 + 11;

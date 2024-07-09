@@ -1,7 +1,9 @@
 #ifndef SCAR_H
 #define SCAR_H
 
-#define END_STATE 7
+#define END_STATE 128
+
+#define VERBOSE 1
 
 enum Type {
 	int_val,
@@ -12,6 +14,10 @@ enum Type {
 
 enum e_token {
 	t_type,
+	t_type_int,
+	t_type_float,
+	t_type_string,
+	t_type_void,
 	t_return,
 	t_id,
 	t_num_int,
@@ -25,6 +31,54 @@ enum e_token {
 	t_semicolon,
 	t_binop,
 	t_comma
+};
+
+enum e_binop {
+	plus,
+	minus,
+	times,
+	divide
+};
+
+enum e_stat {
+	s_var_bind,
+	s_fun_bind,
+	s_function_call,
+	s_if,
+	s_else,
+	s_return,
+	s_fun_body
+};
+
+enum e_expr {
+	e_id,
+	e_val,
+	e_binop,
+	e_param
+};
+
+enum e_nodetype {
+	n_none,
+	n_stat,
+	n_expr,
+	n_prog
+};
+
+struct node {
+	enum e_nodetype nodetype;
+	int specific_type;
+	int token_count;
+	int *token_indices;
+	int extra_info;
+	int first;
+	int second;
+	int parent;
+	int print_indent;
+};
+
+struct tree {
+	struct node *nodes;
+	int n;
 };
 
 /*
@@ -43,7 +97,7 @@ struct Int {
 	int val;
 };
 
-struct Token {
+struct token {
 	enum e_token type;
 	char *val;
 	unsigned long line_no;
@@ -52,7 +106,7 @@ struct Token {
 
 struct token_index {
 	unsigned long n;
-	struct Token *ts;
+	struct token *ts;
 };
 
 #endif
