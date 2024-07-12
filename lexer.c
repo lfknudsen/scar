@@ -6,25 +6,40 @@
 
 #include <assert.h>
 
+int init_read_token(struct token_index* ti, unsigned long* token_count, int* sum_sizeof_ts, int line_number,
+		int char_number, int* sum_sizeof_val, char** string, int string_len, enum e_token token_type) {
+	ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (*token_count + 1));
+	*sum_sizeof_ts += sizeof(*ti->ts);
+	ti->ts[*token_count].type = token_type;
+	ti->ts[*token_count].line_number = line_number;
+	ti->ts[*token_count].char_number = char_number;
+	size_t sizeof_val = sizeof(*ti->ts[*token_count].val) * (string_len);
+	*sum_sizeof_val += sizeof_val;
+	ti->ts[*token_count].val = malloc(sizeof(*ti->ts[*token_count].val) * (string_len));
+	strcpy(ti->ts[*token_count].val, *string);
+	ti->ts[*token_count].val[string_len] = '\0';
+	*token_count ++;
+}
+
 int lex(FILE *f, FILE *output, struct token_index *ti) {
 	//struct Token *ts = &ti->ts;
-	int ts_bytes = 0;
-	int val_bytes = 0;
+	int sum_sizeof_ts = 0;
+	int sum_sizeof_val = 0;
 
-	unsigned long line_no = 1;
-	unsigned long char_no = 1;
+	unsigned long line_number = 1;
+	unsigned long char_number = 1;
 	unsigned long token_count = 0;
 	char c = fgetc(f);
 	while (c != EOF && c != '\0') {
-		unsigned int char_no_add = 1;
+		unsigned int char_number_add = 1;
 		if (c == '\n') {
-			line_no ++;
-			char_no = 1;
+			line_number ++;
+			char_number = 1;
 			c = fgetc(f);
 			continue;
 		}
 		if (c == ' ') {
-			char_no ++;
+			char_number ++;
 			c = fgetc(f);
 			continue;
 		}
@@ -38,13 +53,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 				string_len ++;
 				letter_string = realloc(letter_string, sizeof(char) * (string_len + 1));
 				letter_string[string_len - 1] = c;
-				char_no_add ++;
+				char_number_add ++;
 				c = fgetc(f);
 			}
 			letter_string[string_len] = '\0';
 
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			if (strcmp(letter_string,"void")==0)	{
 				fprintf(output, "TOKEN: TYPE\n");
 				ti->ts[token_count].type = t_type;
@@ -62,23 +77,25 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 				ti->ts[token_count].type = t_return;
 			}
 			else {
-				fprintf(output, "ID\n");
+				fprintf(output, "TOKEN: ID\n");
 				ti->ts[token_count].type = t_id;
 			}
-			fprintf(output, "%lu\n%lu\n", line_no, char_no);
+			fprintf(output, " Line#: %lu\n Char#: %lu\n", line_number, char_number);
 			if (strcmp(letter_string,"return") != 0) {
-				fprintf(output, "%s\n", letter_string);
+				fprintf(output, " Value: %s\n", letter_string);
 			}
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * (string_len));
-			val_bytes += sizeof(*ti->ts[token_count].val) * (string_len);
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * (string_len);
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, letter_string);
 			token_count ++;
-			char_no += char_no_add;
+			char_number += char_number_add;
 			free(letter_string);
 			continue;
 		}
+		// Number token
 		else if (c >= 48 && c <= 57) { // [0-9]
 			char is_floating_type = 0;
 			char *number_string = malloc(sizeof(char) * 2);
@@ -89,15 +106,15 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 				if (c == 46) {
 					if (is_floating_type) {
 						is_floating_type ++;
-						char_no_add ++;
+						char_number_add ++;
 						printf("Lexer error. Extra '.' in floating-point number");
-						printf(" at %lu:%lu\n", line_no, char_no + char_no_add);
+						printf(" at %lu:%lu\n", line_number, char_number + char_number_add);
 					} else {
 						is_floating_type ++;
 						string_len ++;
 						number_string = realloc(number_string, sizeof(*number_string) * (string_len));
 						number_string[string_len - 1] = c;
-						char_no_add ++;
+						char_number_add ++;
 						c = fgetc(f);
 					}
 				}
@@ -105,80 +122,89 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 					string_len ++;
 					number_string = realloc(number_string, sizeof(*number_string) * (string_len));
 					number_string[string_len - 1] = c;
-					char_no_add ++;
+					char_number_add ++;
 					c = fgetc(f);
 				}
 			}
-			printf("String: %s\nString length: %d\n", number_string, string_len);
+			number_string[string_len] = '\0';
+			printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
 			if (is_floating_type) {
-				fprintf(output, "NUM: FLOAT\n%lu\n%lu\n%s\n", line_no, char_no, number_string);
+				fprintf(output, "TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", line_number, char_number, number_string);
 			}
 			else {
-				fprintf(output, "NUM: INT\n%lu\n%lu\n%s\n", line_no, char_no, number_string);
+				fprintf(output, "TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", line_number, char_number, number_string);
 			}
+			//init_read_token(ti, &token_count, &sum_sizeof_ts, line_number, char_number, &sum_sizeof_val, &number_string,
+			//	string_len, (is_floating_type) ? t_num_float : t_num_int);
+			
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = (is_floating_type) ? t_num_float : t_num_int;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * (string_len);
+			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * (string_len));
-			val_bytes += sizeof(*ti->ts[token_count].val) * (string_len);
 			strcpy(ti->ts[token_count].val, number_string);
 			ti->ts[token_count].val[string_len] = '\0';
 			token_count ++;
 
 			free(number_string);
-			char_no += char_no_add;
+			char_number += char_number_add;
 			continue;
 		}
 		else if (c == '+') {
-			fprintf(output, "BINOP\n+\n");
+			fprintf(output, "TOKEN: BINOP\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "+");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
 		}
 		else if (c == '-') {
-			fprintf(output, "BINOP\n-\n");
+			fprintf(output, "TOKEN: BINOP\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "-");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
 		}
 		else if (c == '*') {
-			fprintf(output, "BINOP\n*\n");
+			fprintf(output, "TOKEN: BINOP\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			printf("%s\n", strcpy(ti->ts[token_count].val, "*"));
 			//ti->ts[token_count].val[1] = '\0';
 			token_count ++;
 		}
 		else if (c == '/') {
-			fprintf(output, "BINOP\n/\n");
+			fprintf(output, "TOKEN: BINOP\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "/");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -186,12 +212,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		else if (c == '{') {
 			fprintf(output, "TOKEN: CURL_BEG\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_curl_beg;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "{");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -199,12 +226,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		else if (c == '}') {
 			fprintf(output, "TOKEN: CURL_END\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_curl_end;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "}");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -212,12 +240,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		else if (c == '(') {
 			fprintf(output, "TOKEN: PAR_BEG\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_par_beg;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "(");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -225,12 +254,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		else if (c == ')') {
 			fprintf(output, "TOKEN: PAR_END\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_par_end;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ")");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -238,12 +268,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		else if (c == ':') {
 			fprintf(output, "TOKEN: COLON\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_colon;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ":");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -251,12 +282,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		else if (c == '=') {
 			fprintf(output, "TOKEN: EQ\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_eq;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "=");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -264,12 +296,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		else if (c == ';') {
 			fprintf(output, "TOKEN: SEMICOLON\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_semicolon;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ";");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -277,12 +310,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		else if (c == ',') {
 			fprintf(output, "TOKEN: COMMA\n");
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			ts_bytes += sizeof(*ti->ts);
+			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_comma;
-			ti->ts[token_count].line_no = line_no;
-			ti->ts[token_count].char_no = char_no;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * 2);
-			val_bytes += 2;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ",");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
@@ -294,10 +328,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 				continue;
 			}
 		}
-		fprintf(output, "%lu\n%lu\n", line_no, char_no);
-		char_no += char_no_add;
+		fprintf(output, " Line#: %lu\n Char#: %lu\n", line_number, char_number);
+		if (ti->ts[token_count - 1].type == t_binop) {
+			fprintf(output, " Value: %s\n", ti->ts[token_count - 1].val);
+		}
+		char_number += char_number_add;
 		c = fgetc(f);
 	}
-	printf("%d\n%d\n", ts_bytes, val_bytes);
+	printf("Total size of tokens: %d\nTotal size of vals:%d\n", sum_sizeof_ts, sum_sizeof_val);
 	return token_count;
 }

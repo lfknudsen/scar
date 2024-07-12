@@ -146,10 +146,11 @@ int main(int argc, char* argv[]) {
 	FILE *write_ptr;
 	write_ptr = fopen("tokens.out", "w");
 	if (write_ptr == NULL) {
-		printf("Could not create/write to file.\n");
+		printf("Could not create/write to file. Check permissions.\n");
 		fclose(read_ptr);
 		return 1;
 	}
+
 	struct token_index *ti = malloc(sizeof(*ti));
 	ti->ts = malloc(sizeof(*ti->ts));
 	ti->n = 0;

@@ -100,8 +100,8 @@ struct Int {
 struct token {
 	enum e_token type;
 	char *val;
-	unsigned long line_no;
-	unsigned long char_no;
+	unsigned long line_number;
+	unsigned long char_number;
 };
 
 struct token_index {
