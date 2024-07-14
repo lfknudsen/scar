@@ -21,6 +21,11 @@ int init_read_token(struct token_index* ti, unsigned long* token_count, int* sum
 	*token_count ++;
 }
 
+// Read through the given file, assembling a list of tokens.
+// Also writes its results to an output file.
+// It is caller's responsibility to open and close file buffers, as
+// well as check for validity.
+// return: Number of tokens found.
 int lex(FILE *f, FILE *output, struct token_index *ti) {
 	//struct Token *ts = &ti->ts;
 	int sum_sizeof_ts = 0;

@@ -32,43 +32,124 @@
 // Binop		-> *
 // Binop		-> /
 
-int eval(struct tree* n_tree, int n_index, struct token_index *ti, void* output) {
-	if (n_tree->n < n_index) return -1;
-	if (n_tree->nodes[n_index].nodetype == n_prog) {
-		if (n_tree->nodes[n_index].first != -1)
-			eval(n_tree, n_tree->nodes[n_index].first, ti, output);
-		if (n_tree->nodes[n_index].second != -1)
-			eval(n_tree, n_tree->nodes[n_index].second, ti, output);
-		return 0;
-	}
-	if (n_tree->nodes[n_index].nodetype == n_stat && n_tree->nodes[n_index].specific_type == s_var_bind) {
-		char* var_name = ti->ts[n_tree->nodes[n_index].token_indices[1]].val;
-		size_t size_of_var_val;
-		switch (ti->ts[n_tree->nodes[n_index].token_indices[1]].type) {
-			case t_type_int:
-				size_of_var_val = sizeof(int);
-				break;
-			case t_type_float:
-				size_of_var_val = sizeof(float);
-				break;
-			case t_type_string:
-				size_of_var_val = sizeof(char);
-				break;
-			default:
-				size_of_var_val = 0;
-				break;
+void vbind(struct vtable_index* vtable, char* id, void* val, unsigned int val_length) {
+	for (int i = 0; i < vtable->n; i++) {
+		if (strcmp(vtable->vs[i].id,id) == 0) {
+			vtable->vs[i].val = val;
+			vtable->vs[i].val_length = val_length;
+			return;
 		}
-		void* var_val = malloc(size_of_var_val);
-		int result = eval(n_tree, n_tree->nodes[n_index].second, ti, var_val);
-		if (result == -1) return -1;
-		else return 1;
 	}
-	if (n_tree->nodes[n_index].nodetype == n_expr &&
-		(n_tree->nodes[n_index].specific_type == e_val || n_tree->nodes[n_index].specific_type == e_id))
-		{
+	vtable->n += 1;
+	vtable->vs = realloc(vtable->vs, sizeof(*vtable->vs) * vtable->n);
+	vtable->vs[vtable->n - 1].id = id;
+	vtable->vs[vtable->n - 1].val = val;
+	vtable->vs[vtable->n - 1].val_length = val_length;
+	return;
+}
 
+int lookup(struct vtable_index* vtable, char* id, void* destination) {
+	for (int i = 0; i < vtable->n; i++) {
+		if (strcmp(vtable->vs[i].id, id) == 0) {
+			memcpy(destination, vtable->vs[i].val, vtable->vs[i].val_length);
+			return 0;
 		}
-	return -1;
+	}
+	return 1;
+}
+
+int fbind(struct ftable_index* ftable, char* id, unsigned int node_index) {
+	if (strcmp(id, "main") == 0) ftable->main_function = node_index;
+	for (int i = 0; i < ftable->n; i++) {
+		if (strcmp(ftable->fs[i].id,id) == 0) {
+			ftable->fs[i].node_index = node_index;
+			return 0;
+		}
+	}
+	ftable->n += 1;
+	ftable->fs = realloc(ftable->fs, sizeof(*ftable->fs) * ftable->n);
+	ftable->fs[ftable->n - 1].id = id;
+	ftable->fs[ftable->n - 1].node_index = node_index;
+	return 0;
+}
+
+int assemble_ftable(struct tree* n_tree, int n_index, struct token_index* ti,
+		FILE* output, struct vtable_index* vtable, struct ftable_index* ftable) {
+	if (n_tree->nodes[n_index].nodetype == n_prog) {
+		if (n_tree->nodes[n_index].first != -1) {
+			return assemble_ftable(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
+		}
+		if (n_tree->nodes[n_index].second != -1) {
+			return assemble_ftable(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable);
+		}
+	}
+	else if (n_tree->nodes[n_index].nodetype == n_stat &&
+		n_tree->nodes[n_index].specific_type == s_fun_bind) {
+		return fbind(ftable, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, n_index);
+	}
+}
+
+int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
+		struct vtable_index* vtable, struct ftable_index* ftable) {
+	if (n_tree->n < n_index) return -1;
+	else if (n_tree->nodes[n_index].nodetype == n_stat) {
+		if (n_tree->nodes[n_index].specific_type == s_fun_bind) {
+			if (n_tree->nodes[n_index].first != -1) {
+				struct vtable_index* new_vtable = malloc(sizeof(vtable));
+				new_vtable->n = 0;
+				//new_vtable->vs = malloc(sizeof(vtable->vs) * vtable->n);
+				//memcpy(new_vtable->vs, vtable->vs, sizeof(vtable->vs) * vtable->n);
+				//eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
+				if (n_tree->nodes[n_index].second != -1)
+					return eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
+				else {
+					printf("Function is missing its body.\n"); return -1;
+				}
+			}
+		}
+		// Variable binding statement
+		else if (n_tree->nodes[n_index].specific_type == s_var_bind) {
+			char* var_name = ti->ts[n_tree->nodes[n_index].token_indices[1]].val;
+			size_t size_of_val = sizeof(int);
+			int value = eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
+			struct vtable_index* new_vtable = malloc(sizeof(vtable));
+			new_vtable->n = vtable->n;
+			new_vtable->vs = malloc(sizeof(new_vtable->vs) * new_vtable->n);
+			memcpy(new_vtable->vs, vtable->vs, sizeof(vtable->vs) * vtable->n);
+			vbind(new_vtable, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, &value, size_of_val);	
+			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
+		}
+		else if (n_tree->nodes[n_index].specific_type == s_return) {
+			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable);
+		}
+		printf("Missing implementation. Specific type: %d\n", n_tree->nodes[n_index].specific_type);
+		return -1;
+	}
+	// Variable/Value
+	else if (n_tree->nodes[n_index].nodetype == n_expr) {
+		if (n_tree->nodes[n_index].specific_type == e_id) {
+			int result;
+			int success = lookup(vtable, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, &result);
+			return result;
+		}	
+		else if (n_tree->nodes[n_index].specific_type == e_val) {
+			int result;
+			memcpy(&result, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, sizeof(int));
+			return result;
+		}
+	}
+	return -2;
+}
+
+int start_eval(struct tree* n_tree, int n_index, struct token_index* ti,
+		FILE* output, struct vtable_index* vtable, struct ftable_index* ftable) {
+	if (n_tree->n < n_index) return -1;
+	//struct ftable_index* new_ftable = malloc(sizeof(ftable));
+	//new_ftable->n = ftable->n;
+	//new_ftable->fs = malloc(sizeof(new_table->fs) * new_ftable->n);
+	//memcpy(new_ftable->fs, ftable->fs, sizeof(ftable->fs) * ftable->n);
+	assemble_ftable(n_tree, n_index, ti, output, vtable, ftable);
+	return eval(n_tree, ftable->fs[ftable->main_function].node_index, ti, output, vtable, ftable);
 }
 
 void print_node(struct tree* node_tree, int n_index) {
@@ -168,9 +249,15 @@ int main(int argc, char* argv[]) {
 			printf("\n");
 			printf("%s (%u)\n", ti->ts[i].val, ti->ts[i].type);
 		}
-		FILE *token_file = fopen("tokens.out", "r");
+		FILE* token_file = fopen("tokens.out", "r");
 		if (token_file == NULL) { printf("Token file not found.\n"); return 1; }
-		struct tree* node_tree = parse(token_file, ti);
+		FILE* node_file = fopen("nodes.out", "w");
+		if (node_file == NULL) {
+			printf("Could not create node file.\n");
+			fclose(token_file);
+			return 1;
+		}
+		struct tree* node_tree = parse(token_file, node_file, ti);
 		if (node_tree == NULL) { printf("Could not parse file.\n"); return 1; }
 		printf("Nodes: %d\n", node_tree->n);
 		for (int i = 0; i < node_tree->n; i++) {
@@ -189,7 +276,7 @@ int main(int argc, char* argv[]) {
 				for (int ind = 0; ind < indent; ind++) {
 					if (ind == node_tree->nodes[node_tree->nodes[i].parent].print_indent) printf("| ");
 					else printf("  ");
-			}
+				}
 				for (int j = 0; j < node_tree->nodes[i].token_count; j++) {
 					for (int c = 0;
 						c < strlen(ti->ts[node_tree->nodes[i].token_indices[j]].val); c++) {
@@ -201,6 +288,19 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		fclose(token_file);
+		fclose(node_file);
+		struct vtable_index* vtable = malloc(sizeof(vtable));
+		struct ftable_index* ftable = malloc(sizeof(ftable));
+		ftable->main_function = 0;
+		ftable->n = 0;
+		FILE* eval_output = fopen("eval.out", "w");
+		printf("Evaluated: %c\n", start_eval(node_tree, 0, ti, eval_output, vtable, ftable));
+		fclose(eval_output);
+		for (int f = 0; f < ftable->n; f++) {
+			printf("%3d %s %d", f, ftable->fs[f].id, ftable->fs[f].node_index);
+			if (ftable->main_function == f) printf(" (main)\n");
+			else printf("\n");
+		}
 	}
 	free_tokens(ti);
 	return 0;

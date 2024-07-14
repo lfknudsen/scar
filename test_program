@@ -1,3 +1,16 @@
+int abc () =
+    int var = 1 + 2;
+    return 1 + 2;
+
+void b() =
+    return 1 * 2;
+
+void c() =
+    return 1 * 2 + 3;
+
+void d() =
+    return 1 + 2 * 3;
+
 void main(int x, int x) =
     return 1 + 2 + 3 * 4 + 5 * 6 + 7;
 
@@ -6,8 +19,13 @@ int fun2() =
 
 
 int fun2() =
+    int var = 2;
     return 3 * var;
 int fun5() =
     return 3;
+
+void blue() =
+    int var = 2;
+    return var;
 
 int fun4 () = return 5 * 5 + 11;

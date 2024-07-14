@@ -5,6 +5,6 @@
 
 #include "scar.h"
 
-struct tree* parse(FILE *f, struct token_index *ti);
+struct tree* parse(FILE *f, FILE* output, struct token_index *ti);
 
 #endif

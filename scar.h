@@ -3,7 +3,7 @@
 
 #define END_STATE 128
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 enum Type {
 	int_val,
@@ -108,5 +108,28 @@ struct token_index {
 	unsigned long n;
 	struct token *ts;
 };
+
+struct function_binding {
+	char* id;
+	unsigned int node_index;
+};
+
+struct ftable_index {
+	unsigned int n;
+	struct function_binding* fs;
+	unsigned int main_function;
+};
+
+struct var_binding {
+	char* id;
+	unsigned int val_length;
+	void* val;
+};
+
+struct vtable_index {
+	unsigned int n;
+	struct var_binding* vs;
+};
+
 
 #endif
