@@ -99,7 +99,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		int top_node_index = add_node(node_tree, n_prog, 0);
 		fprintf(output, "%3d: Program node\n  Created in state %d\n", top_node_index, state);
 
-		return parse_s(1, ti, i, node_tree, 0, top_node_index, output);
+		return parse_s(1, ti, i, node_tree, top_node_index, top_node_index, output);
 	}
 
 	// Expecting a function declaration. State checks type, ID, and beginning parentheses to contain parameters.
@@ -108,6 +108,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 	// node, before returning the result up the chain to evaluate the program node.
 	// A program contains one or more functions.
 	// type id ( -> s2
+	// fun_parent = top node of entire program?
 	else if (state == 1) {
 		if (ti->n == *i) return END_STATE;
 		// Program must consist of only functions at its highest level, and must have at least one function.
@@ -135,6 +136,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 
 		int top_node_index = add_node(node_tree, n_prog, 0);
 		node_tree->nodes[fun_parent].second = top_node_index;
+		printf("Node %d's second set to %d.\n", fun_parent, top_node_index);
 		node_tree->nodes[top_node_index].parent = fun_parent;
 		fprintf(output, "%3d: Program node.\n  Created in state %d.\n", top_node_index, state);
 
@@ -163,6 +165,8 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 	//    If so, add them as tokens, and go to state 
 	// ) = -> s4
 	// type id -> s3
+	// Node index = parameter node
+	// fun_parent = function binding
 	else if (state == 2) {
 		if (check_type(ti, t_par_end, *i)) {
 			*i += 1;
@@ -199,6 +203,8 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 	// Function parameter follow-up (either another parameter or the start of function body)
 	// , -> s2
 	// ) = -> s4
+	// node_index = parameter node.
+	// fun_parent = function binding.
 	else if (state == 3) {
 		if (check_type(ti, t_comma, *i)) {
 			*i += 1;
@@ -224,12 +230,15 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 	// return ; -> s1
 	// return -> s7
 	// type id = -> s5 -> ?
+	// node_index = function binding
+	// fun_parent = function binding
 	else if (state == 4) {
 		if (check_type(ti, t_return, *i)) {
 			*i += 1;
 			int return_node_index = add_node(node_tree, n_stat, s_return);
-			node_tree->nodes[fun_parent].second = return_node_index;
-			node_tree->nodes[return_node_index].parent = fun_parent;
+			node_tree->nodes[node_index].second = return_node_index;
+			printf("Node %d's second set to %d.\n", node_index, return_node_index);
+			node_tree->nodes[return_node_index].parent = node_index;
 			node_tree->nodes[return_node_index].print_indent =
 				node_tree->nodes[node_tree->nodes[return_node_index].parent].print_indent + 1;
 			fprintf(output, "%3d: Return node.\n  Created in state %d.\n", return_node_index, state);
@@ -238,10 +247,10 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 				printf("Warning: Empty function body at %lu:%lu.\n", t[*i].line_number, t[*i].char_number);
 				debug_print(state, *i);
 				*i += 1;
-				return parse_s(1, ti, i, node_tree, return_node_index, fun_parent, output);
+				return parse_s(1, ti, i, node_tree, return_node_index, node_tree->nodes[node_index].parent, output);
 			}
 			else {
-				return parse_s(7, ti, i, node_tree, return_node_index, fun_parent, output);
+				return parse_s(7, ti, i, node_tree, return_node_index, node_index, output);
 			}
 		}
 		// TODO: THIS ONLY SUPPORTS LET-STATEMENTS FOR NOW
@@ -269,6 +278,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		int new_node_index = add_node(node_tree, n_stat, s_var_bind);
 		node_tree->nodes[new_node_index].parent = node_index;
 		node_tree->nodes[node_index].second = new_node_index;
+		printf("Node %d's second set to %d.\n", node_index, new_node_index);
 		node_tree->nodes[new_node_index].print_indent =
 			node_tree->nodes[node_tree->nodes[new_node_index].parent].print_indent + 1;
 
@@ -277,8 +287,8 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 
 		return
 			parse_s (
-				parse_s(5, ti, i, node_tree, new_node_index, fun_parent, output),
-			ti, i, node_tree, node_index, fun_parent, output
+				parse_s(5, ti, i, node_tree, new_node_index, node_index, output),
+			ti, i, node_tree, node_index, node_index, output
 			);
 	}
 	// State used to evaluate the value of the right side of an equals sign.
@@ -474,7 +484,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		if (check_type(ti, t_semicolon, *i)) {
 			*i += 1;
 			add_token(node_tree, *i - 2, expr_node_index);
-			return parse_s(1, ti, i, node_tree, expr_node_index, fun_parent, output);
+			return parse_s(1, ti, i, node_tree, expr_node_index, node_tree->nodes[fun_parent].parent, output);
 		}
 		else if (check_type(ti, t_binop, *i)) {
 			*i += 1;

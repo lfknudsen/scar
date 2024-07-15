@@ -31,9 +31,10 @@ int lookup(struct vtable_index* vtable, char* id, void* destination) {
 }
 
 int fbind(struct ftable_index* ftable, char* id, unsigned int node_index) {
-	if (strcmp(id, "main") == 0) ftable->main_function = node_index;
+	if (strcmp(id, "main") == 0) ftable->start_fun_node = node_index;
 	for (int i = 0; i < ftable->n; i++) {
 		if (strcmp(ftable->fs[i].id,id) == 0) {
+			printf("Function override. %s == %s.\n", ftable->fs[i].id, id);
 			ftable->fs[i].node_index = node_index;
 			return 0;
 		}
@@ -57,12 +58,30 @@ int assemble_ftable(struct tree* n_tree, int n_index, struct token_index* ti,
 	}
 	else if (n_tree->nodes[n_index].nodetype == n_stat &&
 		n_tree->nodes[n_index].specific_type == s_fun_bind) {
-		return fbind(ftable, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, n_index);
+		return fbind(ftable, ti->ts[n_tree->nodes[n_index].token_indices[1]].val, n_index);
+	}
+}
+
+// TODO: Refactor so that ftable is built during parsing or at least using other function.
+// This function just makes sure to go through every node, nice if I want to change
+// how the node structure works later. It's also less reliant on parsing working correctly,
+// making it easier to spot where mistakes are happening.
+int careful_build_ftable(struct tree* n_tree, struct token_index* ti,
+		FILE* output, struct ftable_index* ftable) {
+	for (int i = 0; i < n_tree->n; i++) {
+		if (n_tree->nodes[i].nodetype == n_stat &&
+			n_tree->nodes[i].specific_type == s_fun_bind) {
+			printf("Adding function \"%s\" to ftable.\n", ti->ts[n_tree->nodes[i].token_indices[1]].val);
+			fbind(ftable, ti->ts[n_tree->nodes[i].token_indices[1]].val, i);
+		}
 	}
 }
 
 int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 		struct vtable_index* vtable, struct ftable_index* ftable) {
+	printf("Evaluating (node %d): ", n_index);
+	print_node(n_tree, n_index);
+	printf("\n");
 	if (n_tree->n < n_index) return -1;
 	else if (n_tree->nodes[n_index].nodetype == n_stat) {
 		if (n_tree->nodes[n_index].specific_type == s_fun_bind) {
@@ -72,8 +91,10 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				//new_vtable->vs = malloc(sizeof(vtable->vs) * vtable->n);
 				//memcpy(new_vtable->vs, vtable->vs, sizeof(vtable->vs) * vtable->n);
 				//eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
-				if (n_tree->nodes[n_index].second != -1)
+				if (n_tree->nodes[n_index].second != -1) {
+					printf("Evaluating function body.\n");
 					return eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
+				}
 				else {
 					printf("Function is missing its body.\n"); return -1;
 				}
@@ -88,7 +109,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 			new_vtable->n = vtable->n;
 			new_vtable->vs = malloc(sizeof(new_vtable->vs) * new_vtable->n);
 			memcpy(new_vtable->vs, vtable->vs, sizeof(vtable->vs) * vtable->n);
-			vbind(new_vtable, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, &value, size_of_val);	
+			vbind(new_vtable, ti->ts[n_tree->nodes[n_index].token_indices[1]].val, &value, size_of_val);	
 			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
 		}
 		else if (n_tree->nodes[n_index].specific_type == s_return) {
@@ -107,6 +128,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 		else if (n_tree->nodes[n_index].specific_type == e_val) {
 			int result;
 			memcpy(&result, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, sizeof(int));
+			printf("Returning %c.\n", result);
 			return result;
 		}
 	}
@@ -120,6 +142,13 @@ int start_eval(struct tree* n_tree, int n_index, struct token_index* ti,
 	//new_ftable->n = ftable->n;
 	//new_ftable->fs = malloc(sizeof(new_table->fs) * new_ftable->n);
 	//memcpy(new_ftable->fs, ftable->fs, sizeof(ftable->fs) * ftable->n);
-	assemble_ftable(n_tree, n_index, ti, output, vtable, ftable);
-	return eval(n_tree, ftable->fs[ftable->main_function].node_index, ti, output, vtable, ftable);
+	//assemble_ftable(n_tree, n_index, ti, output, vtable, ftable);
+	careful_build_ftable(n_tree, ti, output, ftable);
+	printf("Assembled ftable (length %d):\n", ftable->n);
+	for (int f = 0; f < ftable->n; f++) {
+		print_node(n_tree, ftable->fs[f].node_index);
+		printf("\n");
+	}
+	printf("Now evaluating main node.\n");
+	return eval(n_tree, ftable->start_fun_node, ti, output, vtable, ftable);
 }

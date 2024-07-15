@@ -173,14 +173,14 @@ int main(int argc, char* argv[]) {
 		fclose(node_file);
 		struct vtable_index* vtable = malloc(sizeof(vtable));
 		struct ftable_index* ftable = malloc(sizeof(ftable));
-		ftable->main_function = 0;
+		ftable->start_fun_node = 0;
 		ftable->n = 0;
 		FILE* eval_output = fopen("eval.out", "w");
 		printf("Evaluated: %c\n", start_eval(node_tree, 0, ti, eval_output, vtable, ftable));
 		fclose(eval_output);
 		for (int f = 0; f < ftable->n; f++) {
 			printf("%3d %s %d", f, ftable->fs[f].id, ftable->fs[f].node_index);
-			if (ftable->main_function == f) printf(" (main)\n");
+			if (ftable->start_fun_node == ftable->fs[f].node_index) printf(" (main)\n");
 			else printf("\n");
 		}
 	}

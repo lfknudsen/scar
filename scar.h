@@ -117,7 +117,7 @@ struct function_binding {
 struct ftable_index {
 	unsigned int n;
 	struct function_binding* fs;
-	unsigned int main_function;
+	unsigned int start_fun_node;
 };
 
 struct var_binding {
@@ -130,6 +130,8 @@ struct vtable_index {
 	unsigned int n;
 	struct var_binding* vs;
 };
+
+void print_node(struct tree* node_tree, int n_index);
 
 
 #endif
