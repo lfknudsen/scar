@@ -3,7 +3,7 @@
 
 #define END_STATE 128
 
-#define VERBOSE 0
+#define VERBOSE 1
 
 enum Type {
 	int_val,
@@ -54,7 +54,8 @@ enum e_expr {
 	e_id,
 	e_val,
 	e_binop,
-	e_param
+	e_param,
+	e_funcall
 };
 
 enum e_nodetype {
@@ -133,5 +134,6 @@ struct vtable_index {
 
 void print_node(struct tree* node_tree, int n_index);
 
+void fprint_node(struct tree* node_tree, int n_index, FILE* output);
 
 #endif

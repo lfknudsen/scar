@@ -121,15 +121,35 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 	// Variable/Value
 	else if (n_tree->nodes[n_index].nodetype == n_expr) {
 		if (n_tree->nodes[n_index].specific_type == e_id) {
-			int result;
-			int success = lookup(vtable, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, &result);
-			return result;
+			char* result = malloc(sizeof(int));
+			int failure = lookup(vtable, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, &result);
+			if (failure) {
+				printf("Variable \"%s\" not found.\n", ti->ts[n_tree->nodes[n_index].token_indices[0]].val);
+			}
+			int number = atoi(result);
+			free(result);
+			return number;
 		}	
 		else if (n_tree->nodes[n_index].specific_type == e_val) {
-			int result;
-			memcpy(&result, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, sizeof(int));
-			printf("Returning %c.\n", result);
-			return result;
+			char* result = malloc(sizeof(int));
+			memcpy(result, ti->ts[n_tree->nodes[n_index].token_indices[0]].val, sizeof(int));
+			int number = atoi(result);
+			free(result);
+			printf("Returning %d.\n", number);
+			return number;
+		}
+		else if (n_tree->nodes[n_index].specific_type == e_binop) {
+			int result1 = eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
+			int result2 = eval(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable);
+			if (n_tree->nodes[n_index].token_count > 0) {
+				char* operator = ti->ts[n_tree->nodes[n_index].token_indices[0]].val;
+				printf("Binary operator: %s\n", operator);
+				if 		(strcmp(operator, "+") == 0) return result1 + result2;
+				else if (strcmp(operator, "-") == 0) return result1 - result2;
+				else if (strcmp(operator, "*") == 0) return result1 * result2;
+				else if (strcmp(operator, "/") == 0) return result1 / result2;
+				else { printf("No BINOP operator specified in node.\n"); }
+			}
 		}
 	}
 	return -2;

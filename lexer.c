@@ -66,23 +66,23 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			if (strcmp(letter_string,"void")==0)	{
-				fprintf(output, "TOKEN: TYPE\n");
+				fprintf(output, "%3lu: TOKEN: TYPE\n", token_count);
 				ti->ts[token_count].type = t_type;
 			}
 			else if (strcmp(letter_string,"int")==0) {
-				fprintf(output, "TOKEN: TYPE\n");
+				fprintf(output, "%3lu: TOKEN: TYPE\n", token_count);
 				ti->ts[token_count].type = t_type;
 			}
 			else if (strcmp(letter_string,"float")==0) {
-				fprintf(output, "TOKEN: TYPE\n");
+				fprintf(output, "%3lu: TOKEN: TYPE\n", token_count);
 				ti->ts[token_count].type = t_type;
 			}
 			else if (strcmp(letter_string,"return")==0) {
-				fprintf(output, "TOKEN: RETURN\n");
+				fprintf(output, "%3lu: TOKEN: RETURN\n", token_count);
 				ti->ts[token_count].type = t_return;
 			}
 			else {
-				fprintf(output, "TOKEN: ID\n");
+				fprintf(output, "%3lu: TOKEN: ID\n", token_count);
 				ti->ts[token_count].type = t_id;
 			}
 			fprintf(output, " Line#: %lu\n Char#: %lu\n", line_number, char_number);
@@ -134,10 +134,10 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			number_string[string_len] = '\0';
 			printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
 			if (is_floating_type) {
-				fprintf(output, "TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", line_number, char_number, number_string);
+				fprintf(output, "%3lu: TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
 			}
 			else {
-				fprintf(output, "TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", line_number, char_number, number_string);
+				fprintf(output, "%3lu: TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
 			}
 			//init_read_token(ti, &token_count, &sum_sizeof_ts, line_number, char_number, &sum_sizeof_val, &number_string,
 			//	string_len, (is_floating_type) ? t_num_float : t_num_int);
@@ -159,7 +159,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			continue;
 		}
 		else if (c == '+') {
-			fprintf(output, "TOKEN: BINOP\n");
+			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
@@ -173,7 +173,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '-') {
-			fprintf(output, "TOKEN: BINOP\n");
+			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
@@ -187,7 +187,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '*') {
-			fprintf(output, "TOKEN: BINOP\n");
+			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
@@ -201,7 +201,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '/') {
-			fprintf(output, "TOKEN: BINOP\n");
+			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
@@ -215,7 +215,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '{') {
-			fprintf(output, "TOKEN: CURL_BEG\n");
+			fprintf(output, "%3lu: TOKEN: CURL_BEG\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_curl_beg;
@@ -229,7 +229,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '}') {
-			fprintf(output, "TOKEN: CURL_END\n");
+			fprintf(output, "%3lu: TOKEN: CURL_END\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_curl_end;
@@ -243,7 +243,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '(') {
-			fprintf(output, "TOKEN: PAR_BEG\n");
+			fprintf(output, "%3lu: TOKEN: PAR_BEG\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_par_beg;
@@ -257,7 +257,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == ')') {
-			fprintf(output, "TOKEN: PAR_END\n");
+			fprintf(output, "%3lu: TOKEN: PAR_END\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_par_end;
@@ -271,7 +271,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == ':') {
-			fprintf(output, "TOKEN: COLON\n");
+			fprintf(output, "%3lu: TOKEN: COLON\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_colon;
@@ -285,7 +285,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '=') {
-			fprintf(output, "TOKEN: EQ\n");
+			fprintf(output, "%3lu: TOKEN: EQ\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_eq;
@@ -299,7 +299,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == ';') {
-			fprintf(output, "TOKEN: SEMICOLON\n");
+			fprintf(output, "%3lu: TOKEN: SEMICOLON\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_semicolon;
@@ -313,7 +313,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == ',') {
-			fprintf(output, "TOKEN: COMMA\n");
+			fprintf(output, "%3lu: TOKEN: COMMA\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_comma;

@@ -33,50 +33,56 @@
 // Binop		-> *
 // Binop		-> /
 
-
 void print_node(struct tree* node_tree, int n_index) {
+	fprint_node(node_tree, n_index, stdout);
+}
+
+void fprint_node(struct tree* node_tree, int n_index, FILE* output) {
+	if (output == NULL) {
+		output = stdout;
+	}
 	switch (node_tree->nodes[n_index].nodetype) {
 		case n_stat:
 			switch (node_tree->nodes[n_index].specific_type) {
 				case s_var_bind:
-					printf("Statement: Variable bind");
+					fprintf(output, "Statement: Variable bind");
 					return;
 				case s_fun_bind:
-					printf("Statement: Function bind");
+					fprintf(output, "Statement: Function bind");
 					return;
 				case s_function_call:
-					printf("Statement: Function call");
+					fprintf(output, "Statement: Function call");
 					return;
 				case s_if:
-					printf("Statement: If");
+					fprintf(output, "Statement: If");
 					return;
 				case s_else:
-					printf("Statement: Else");
+					fprintf(output, "Statement: Else");
 					return;
 				case s_return:
-					printf("Statement: Return");
+					fprintf(output, "Statement: Return");
 					return;
 				case s_fun_body:
-					printf("Statement: Function body");
+					fprintf(output, "Statement: Function body");
 					return;
 			}
 		case n_expr:
 			switch (node_tree->nodes[n_index].specific_type) {
 				case e_id:
-					printf("Expression: Variable name");
+					fprintf(output, "Expression: Variable name");
 					return;
 				case e_val:
-					printf("Expression: Value");
+					fprintf(output, "Expression: Value");
 					return;
 				case e_binop:
-					printf("Expression: Binary operation");
+					fprintf(output, "Expression: Binary operation");
 					return;
 				case e_param:
-					printf("Expression: Parameter declaration");
+					fprintf(output, "Expression: Parameter declaration");
 					return;
 			}
 		case n_prog:
-			printf("Top-level program");
+			fprintf(output, "Top-level program");
 			return;
 		default:
 			return;
@@ -98,11 +104,10 @@ int fail_input() {
 }
 
 int main(int argc, char* argv[]) {
-	if (argc <= 1 || strcmp(argv[1],"--help") == 0 || strcmp(argv[1],"-h") == 0 || argc != 2 ) {
+	if (argc <= 1 || strcmp(argv[1],"--help") == 0 || strcmp(argv[1],"-h") == 0 || argc > 3 ) {
 		return fail_input();
 	}
 	printf("Input: %s\n", argv[1]);
-
 	FILE *read_ptr;
 	read_ptr = fopen(argv[1], "r");
 	if (read_ptr == NULL) { printf("File not found.\n"); return fail_input(); }
@@ -143,6 +148,12 @@ int main(int argc, char* argv[]) {
 		if (node_tree == NULL) { printf("Could not parse file.\n"); return 1; }
 		printf("Nodes: %d\n", node_tree->n);
 		for (int i = 0; i < node_tree->n; i++) {
+			printf("%3d: ", i);
+			print_node(node_tree, i);
+			printf(". %s. Par: %d. Fst: %d. Snd: %d.\n", ti->ts[node_tree->nodes[i].token_indices[0]].val,
+			node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
+		}
+		/* for (int i = 0; i < node_tree->n; i++) {
 			int indent = node_tree->nodes[i].print_indent;
 			for (int ind = 0; ind < indent; ind++) {
 					if (ind == node_tree->nodes[node_tree->nodes[i].parent].print_indent) printf("| ");
@@ -169,14 +180,14 @@ int main(int argc, char* argv[]) {
 				printf("\n");
 			}
 		}
-		fclose(token_file);
+ */		fclose(token_file);
 		fclose(node_file);
 		struct vtable_index* vtable = malloc(sizeof(vtable));
 		struct ftable_index* ftable = malloc(sizeof(ftable));
 		ftable->start_fun_node = 0;
 		ftable->n = 0;
 		FILE* eval_output = fopen("eval.out", "w");
-		printf("Evaluated: %c\n", start_eval(node_tree, 0, ti, eval_output, vtable, ftable));
+		printf("Evaluated: %d\n", start_eval(node_tree, 0, ti, eval_output, vtable, ftable));
 		fclose(eval_output);
 		for (int f = 0; f < ftable->n; f++) {
 			printf("%3d %s %d", f, ftable->fs[f].id, ftable->fs[f].node_index);
