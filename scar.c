@@ -33,11 +33,11 @@
 // Binop		-> *
 // Binop		-> /
 
-void print_node(struct tree* node_tree, int n_index) {
-    fprint_node(node_tree, n_index, stdout);
+void print_node(struct tree* node_tree, int n_index, int out) {
+    fprint_node(node_tree, n_index, stdout, out);
 }
 
-void fprint_node(struct tree* node_tree, int n_index, FILE* output) {
+void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
     if (output == NULL) {
         output = stdout;
     }
@@ -90,7 +90,7 @@ void fprint_node(struct tree* node_tree, int n_index, FILE* output) {
     return;
 }
 
-void free_tokens(struct token_index *ti) {
+void free_tokens(struct token_index* ti) {
     for (int i = 0; i < ti->n; i++) {
         free(ti->ts[i].val);
     }
@@ -98,27 +98,78 @@ void free_tokens(struct token_index *ti) {
     free(ti);
 }
 
+void free_nodes(struct tree* nt) {
+    for (int i = 0; i < nt->n; i++) {
+        free(nt->nodes[i].token_indices);
+    }
+    free(nt->nodes);
+    free(nt);
+}
+
+void free_ftable(struct ftable_index* ft) {
+    free(ft->fs);
+    free(ft);
+}
+
+void free_vtable(struct vtable_index* vt) {
+    free(vt->vs);
+    free(vt);
+}
+
+void free_ivtable(struct ivtable_index* vt) {
+    free(vt->vs);
+    free(vt);
+}
+
 int fail_input() {
-    printf("Scar Compiler usage:\n./scar <filename>\n");
+    printf("Scar Compiler usage:\n./scar [option] <filename>\n");
+    printf("Options:\n  -v    Print in-depth log information.\n");
+    printf("  -q    Hide all print output, including errors, excluding result.\n");
     return 1;
 }
 
 int main(int argc, char* argv[]) {
-    if (argc <= 1 || strcmp(argv[1],"--help") == 0 || strcmp(argv[1],"-h") == 0 || argc > 3 ) {
+    if (argc <= 1 || strcmp(argv[1],"--help") == 0 || strcmp(argv[1],"-h") == 0 ) {
         return fail_input();
     }
-    int quiet = 1-VERBOSE;
-    if (argc == 3 && strcmp(argv[2],"-t") == 0) {
-        quiet = 1;
+    int out = standard;
+    if (argc >= 3) {
+        if (strcmp(argv[1],"-q") == 0) {
+            out = quiet;
+        } else if (strcmp(argv[1],"-v") == 0) {
+            printf("Verbose output activated.\n");
+            out = verbose;
+            int x = out;
+            printf("out returns %d\n", x);
+            printf("out equals %d\n", out);
+        }
     }
-    if (VERBOSE) printf("Input: %s\n", argv[1]);
-    FILE *read_ptr;
-    read_ptr = fopen(argv[1], "r");
-    if (read_ptr == NULL) { if (VERBOSE) printf("File not found.\n"); return fail_input(); }
+    if (out == verbose) {
+        printf("Input:");
+        for (int i = 0; i < argc; i++) {
+            printf(" %s", argv[i]);
+        }
+        printf("\n");
+    }
+    const char* program_dir = "tests/programs/";
+    char* filename;
+    if (argc == 2) filename = argv[1];
+    else if (argc >= 3) filename = argv[2];
+    FILE* read_ptr = fopen(filename, "r");
+    if (read_ptr == NULL) {
+        char* retry_dir = malloc(sizeof(program_dir) + sizeof(filename));
+        sprintf(retry_dir, "%s%s", program_dir, filename);
+        read_ptr = fopen(retry_dir, "r");
+        free(retry_dir);
+        if (read_ptr == NULL) {
+            if (out >= standard) printf("File not found.\n");
+            return fail_input();
+        }
+    }
     FILE *write_ptr;
     write_ptr = fopen("tokens.out", "w");
     if (write_ptr == NULL) {
-        if (VERBOSE) printf("Could not create/write to file. Check permissions.\n");
+        if (out >= standard) printf("Could not create/write to file. Check permissions.\n");
         fclose(read_ptr);
         return 1;
     }
@@ -127,12 +178,12 @@ int main(int argc, char* argv[]) {
     ti->ts = malloc(sizeof(*ti->ts));
     ti->n = 0;
     ti->n = lex(read_ptr, write_ptr, ti);
-    if (!quiet) printf("Read %lu tokens.\n", ti->n);
+    if (out >= verbose) printf("Read %lu tokens.\n", ti->n);
     fclose(read_ptr);
     fclose(write_ptr);
 
     if (ti->n) {
-        if (!quiet) {
+        if (out >= verbose) {
             for (int i = 0; i < ti->n; i++) {
                 printf("Token #%d: \n", i);
                 for (int c = 0; c < strlen(ti->ts[i].val); c++) {
@@ -150,13 +201,13 @@ int main(int argc, char* argv[]) {
             fclose(token_file);
             return 1;
         }
-        struct tree* node_tree = parse(token_file, node_file, ti);
+        struct tree* node_tree = parse(token_file, node_file, ti, out);
         if (node_tree == NULL) { printf("Could not parse file.\n"); return 1; }
-        if (!quiet) {
+        if (out >= verbose) {
             printf("Nodes: %d\n", node_tree->n);
             for (int i = 0; i < node_tree->n; i++) {
                 printf("%3d: ", i);
-                print_node(node_tree, i);
+                print_node(node_tree, i, out);
                 printf(". %s. Par: %d. Fst: %d. Snd: %d.\n", ti->ts[node_tree->nodes[i].token_indices[0]].val,
                 node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
                 for (int t = 0; t < node_tree->nodes[i].token_count; t++) {
@@ -172,7 +223,7 @@ int main(int argc, char* argv[]) {
             }
 
             printf("Node #%d. ", i);
-            print_node(node_tree, i);
+            print_node(node_tree, i, out);
             printf(". Parent: %d. ", node_tree->nodes[i].parent);
             printf("1: %d. 2: %d\n", node_tree->nodes[i].first, node_tree->nodes[i].second);
 
@@ -201,13 +252,16 @@ int main(int argc, char* argv[]) {
         int result = start_eval(node_tree, 0, ti, eval_output, vtable, ftable);
         printf("%d\n", result);
         fclose(eval_output);
-        if (!quiet) {
+        if (out >= verbose) {
             for (int f = 0; f < ftable->n; f++) {
                 printf("%3d %s %d", f, ftable->fs[f].id, ftable->fs[f].node_index);
                 if (ftable->start_fun_node == ftable->fs[f].node_index) printf(" (main)\n");
                 else printf("\n");
             }
         }
+        free_ftable(ftable);
+        free_ivtable(vtable);
+        free_nodes(node_tree);
     }
     free_tokens(ti);
     return 0;

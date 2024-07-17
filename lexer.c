@@ -103,16 +103,27 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		// Number token
 		else if (c >= 48 && c <= 57) { // [0-9]
 			char is_floating_type = 0;
-			char *number_string = malloc(sizeof(char) * 2);
-			int string_len = 1;
-			number_string[0] = c;
+			int negative = 0;
+			if (token_count > 2 && ti->ts[token_count - 1].type == t_binop &&
+					strcmp(ti->ts[token_count - 1].val,"-") == 0 &&
+					ti->ts[token_count - 2].type != t_num_int &&
+					ti->ts[token_count - 2].type != t_num_float &&
+					ti->ts[token_count - 2].type != t_id) {
+				negative = 1;
+				ti->ts = realloc(ti->ts, (token_count - 1) * sizeof(*ti->ts));
+				token_count --;
+			}	
+			char *number_string = malloc(sizeof(char) * (2 + negative));
+			int string_len = 1 + negative;
+			if (negative) number_string[0] = '-';
+			number_string[0 + negative] = c;
 			c = fgetc(f);
 			while (is_floating_type <= 1 && ((c >= 48 && c <= 57) || (c == 46))) { // [0-9.]
 				if (c == 46) {
 					if (is_floating_type) {
 						is_floating_type ++;
 						char_number_add ++;
-						if (VERBOSE) {
+						if (out >= standard) {
 							printf("Lexer error. Extra '.' in floating-point number");
 							printf(" at %lu:%lu\n", line_number, char_number + char_number_add);
 						}
@@ -134,15 +145,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 				}
 			}
 			number_string[string_len] = '\0';
-			if (VERBOSE) printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
+			if (out >= verbose) printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
 			if (is_floating_type) {
 				fprintf(output, "%3lu: TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
 			}
 			else {
 				fprintf(output, "%3lu: TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
 			}
-			//init_read_token(ti, &token_count, &sum_sizeof_ts, line_number, char_number, &sum_sizeof_val, &number_string,
-			//	string_len, (is_floating_type) ? t_num_float : t_num_int);
 			
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
@@ -167,7 +176,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_binop;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof("+");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "+");
@@ -175,18 +184,27 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '-') {
+			/*if (token_count > 1) {
+				enum e_token prev = ti->ts[token_count - 1].type;
+				if (prev != t_num_int && prev != t_num_float && prev != t_id) {
+					char_number ++;
+					c = fgetc(f);	
+				}
+			}*/
+			//else {
 			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = t_binop;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof("-");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "-");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
+			//}
 		}
 		else if (c == '*') {
 			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
@@ -195,11 +213,11 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_binop;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof("*");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
-			if (VERBOSE) printf("%s\n", strcpy(ti->ts[token_count].val, "*"));
-			//ti->ts[token_count].val[1] = '\0';
+			strcpy(ti->ts[token_count].val, "*");
+			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
 		}
 		else if (c == '/') {
@@ -209,7 +227,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_binop;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof("/");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "/");
@@ -223,7 +241,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_curl_beg;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof("{");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "{");
@@ -237,7 +255,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_curl_end;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof("}");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "}");
@@ -251,7 +269,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_par_beg;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof("(");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "(");
@@ -265,7 +283,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_par_end;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof(")");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ")");
@@ -279,7 +297,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_colon;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof(":");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ":");
@@ -293,7 +311,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_eq;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof("=");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, "=");
@@ -307,7 +325,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_semicolon;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof(";");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ";");
@@ -321,7 +339,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = t_comma;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
+			size_t sizeof_val = sizeof(",");
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ",");
@@ -342,6 +360,6 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		char_number += char_number_add;
 		c = fgetc(f);
 	}
-	if (VERBOSE) printf("Total size of tokens: %d\nTotal size of vals:%d\n", sum_sizeof_ts, sum_sizeof_val);
+	if (out >= verbose) printf("Total size of tokens: %d\nTotal size of vals:%d\n", sum_sizeof_ts, sum_sizeof_val);
 	return token_count;
 }

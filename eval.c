@@ -65,7 +65,7 @@ int fbind(struct ftable_index* ftable, char* id, unsigned int node_index) {
 	if (strcmp(id, "main") == 0) ftable->start_fun_node = node_index;
 	for (int i = 0; i < ftable->n; i++) {
 		if (strcmp(ftable->fs[i].id,id) == 0) {
-			if (VERBOSE) printf("Function override. %s == %s.\n", ftable->fs[i].id, id);
+			if (out >= verbose) printf("Function override. %s == %s.\n", ftable->fs[i].id, id);
 			ftable->fs[i].node_index = node_index;
 			return 0;
 		}
@@ -102,7 +102,7 @@ int careful_build_ftable(struct tree* n_tree, struct token_index* ti,
 	for (int i = 0; i < n_tree->n; i++) {
 		if (n_tree->nodes[i].nodetype == n_stat &&
 			n_tree->nodes[i].specific_type == s_fun_bind) {
-			if (VERBOSE) printf("Adding function \"%s\" to ftable.\n", ti->ts[n_tree->nodes[i].token_indices[1]].val);
+			if (out >= verbose) printf("Adding function \"%s\" to ftable.\n", ti->ts[n_tree->nodes[i].token_indices[1]].val);
 			fbind(ftable, ti->ts[n_tree->nodes[i].token_indices[1]].val, i);
 		}
 	}
@@ -119,9 +119,9 @@ int careful_build_ftable(struct tree* n_tree, struct token_index* ti,
 //  'ftable': the function table.
 int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 		struct ivtable_index* vtable, struct ftable_index* ftable) {
-	if (VERBOSE) {
+	if (out >= verbose) {
 		printf("Evaluating (node %d): ", n_index);
-		print_node(n_tree, n_index);
+		print_node(n_tree, n_index, out);
 		printf("\n");
 	}
 	if (n_tree->n < n_index) return -1;
@@ -134,11 +134,14 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				//memcpy(new_vtable->vs, vtable->vs, sizeof(vtable->vs) * vtable->n);
 				//eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
 				if (n_tree->nodes[n_index].second != -1) {
-					if (VERBOSE) printf("Evaluating function body.\n");
-					return eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
+					if (out >= verbose) printf("Evaluating function body.\n");
+					int result = eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
+					free_ivtable(new_vtable);
+					return result;
 				}
 				else {
-					if (VERBOSE) printf("Function is missing its body.\n");
+					if (out >= verbose) printf("Function is missing its body.\n");
+					free_ivtable(new_vtable);
 					return -1;
 				}
 			}
@@ -166,7 +169,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 		else if (n_tree->nodes[n_index].specific_type == s_return) {
 			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable);
 		}
-		if (VERBOSE) printf("Missing implementation. Specific type: %d\n", n_tree->nodes[n_index].specific_type);
+		if (out >= verbose) printf("Missing implementation. Specific type: %d\n", n_tree->nodes[n_index].specific_type);
 		return -1;
 	}
 	// Variable/Value.
@@ -195,13 +198,15 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 		}	
 		else if (n_tree->nodes[n_index].specific_type == e_val) {
 			if (n_tree->nodes[n_index].token_count <= 0) {
-				if (VERBOSE) printf("Evaluation error: Attempting to bind a value to a variable,\n");
-				if (VERBOSE) printf("but no name or value was found. May have roots in an uncaught parsing bug/error.\n");
+				if (out >= verbose) {
+					printf("Evaluation error: Attempting to bind a value to a variable,\n");
+					printf("but no name or value was found. May have roots in an uncaught parsing bug/error.\n");
+				}
 			}
 			char* saved_value = ti->ts[n_tree->nodes[n_index].token_indices[0]].val;
-			if (VERBOSE) printf("Found saved value: %s\n", saved_value);
+			if (out >= verbose) printf("Found saved value: %s\n", saved_value);
 			int value = atoi(saved_value);
-			if (VERBOSE) printf("Returning value: %d\n", value);
+			if (out >= verbose) printf("Returning value: %d\n", value);
 			return value;
 		}
 		// Binary operations
@@ -209,25 +214,25 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 			struct node* n = &n_tree->nodes[n_index];
 			if (n->token_count > 0) {
 				if (n->first == -1) {
-					if (VERBOSE) printf("Evaluation error: No first child node found in binary operation (node %d).\n", n_index);
+					if (out >= verbose) printf("Evaluation error: No first child node found in binary operation (node %d).\n", n_index);
 					return -5;
 				}
 				if (n->second == -1) {
-					if (VERBOSE) printf("Evaluation error: No second child node found in binary operation (node %d).\n", n_index);
+					if (out >= verbose) printf("Evaluation error: No second child node found in binary operation (node %d).\n", n_index);
 					return -5;
 				}
 				int result1 = eval(n_tree, n->first, ti, output, vtable, ftable);
 				int result2 = eval(n_tree, n->second, ti, output, vtable, ftable);
 				char* operator = ti->ts[n->token_indices[0]].val;
-				if (VERBOSE) printf("Calculating %d %s %d\n", result1, operator, result2);
+				if (out >= verbose) printf("Calculating %d %s %d\n", result1, operator, result2);
 				if 		(strcmp(operator, "+") == 0) return result1 + result2;
 				else if (strcmp(operator, "-") == 0) return result1 - result2;
 				else if (strcmp(operator, "*") == 0) return result1 * result2;
 				else if (strcmp(operator, "/") == 0) return result1 / result2;
-				else { if (VERBOSE) printf("No BINOP operator specified in node.\n"); }
+				else { if (out >= verbose) printf("No BINOP operator specified in node.\n"); }
 			}
 			else {
-				if (VERBOSE) printf("Evaluation error: No operator found for binary operation (node %d). The token is not connected.\n", n_index);
+				if (out >= verbose) printf("Evaluation error: No operator found for binary operation (node %d). The token is not connected.\n", n_index);
 				return -4;
 			}
 		}
@@ -244,10 +249,10 @@ int start_eval(struct tree* n_tree, int n_index, struct token_index* ti,
 	//memcpy(new_ftable->fs, ftable->fs, sizeof(ftable->fs) * ftable->n);
 	//assemble_ftable(n_tree, n_index, ti, output, vtable, ftable);
 	careful_build_ftable(n_tree, ti, output, ftable);
-	if (VERBOSE) {
+	if (out >= verbose) {
 		printf("Assembled ftable (length %d):\n", ftable->n);
 		for (int f = 0; f < ftable->n; f++) {
-			print_node(n_tree, ftable->fs[f].node_index);
+			print_node(n_tree, ftable->fs[f].node_index, out);
 			printf("\n");
 		}
 		printf("Now evaluating main node.\n");

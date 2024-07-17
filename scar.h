@@ -3,7 +3,7 @@
 
 #define END_STATE 128
 
-#define VERBOSE 0
+//#define VERBOSE 0
 
 enum Type {
 	int_val,
@@ -82,18 +82,6 @@ struct tree {
 	int n;
 };
 
-/*
-char const*const token_str[7] = {
-	[t_type] = "int",
-	[t_type] = "float",
-	[t_type] = "string",
-	[t_type] = "void",
-	[t_return] = "return",
-	[t_id] = "id",
-	[t_num] = "num"
-};
-*/
-
 struct Int {
 	int val;
 };
@@ -148,8 +136,18 @@ enum error_codes {
 	
 };
 
-void print_node(struct tree* node_tree, int n_index);
+enum out_mode {
+    quiet,
+    standard,
+    verbose
+};
 
-void fprint_node(struct tree* node_tree, int n_index, FILE* output);
+int out;
+
+void print_node(struct tree* node_tree, int n_index, int out);
+
+void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out);
+
+void free_ivtable(struct ivtable_index* vt);
 
 #endif
