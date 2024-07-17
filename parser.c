@@ -109,8 +109,17 @@ int add_node(struct tree *node_tree, int node_type, int specific_type, int state
 	return node_tree->n - 1;
 }
 
-void add_token(struct tree *node_tree, int t_index, int n_index) {
-	struct node *n = &node_tree->nodes[n_index];
+void add_token(struct tree* node_tree, int t_index, int n_index) {
+	struct node* n = &node_tree->nodes[n_index];
+	n->token_count += 1;
+	n->token_indices =
+		realloc(n->token_indices, sizeof(*n->token_indices) * n->token_count);
+	n->token_indices[n->token_count - 1] = t_index;
+	if (VERBOSE) printf("Adding token %d to node %d.\n", t_index, n_index);
+}
+
+void connect_token(struct tree* n_tree, int n_index, int t_index) {
+	struct node* n = &n_tree->nodes[n_index];
 	n->token_count += 1;
 	n->token_indices =
 		realloc(n->token_indices, sizeof(*n->token_indices) * n->token_count);
@@ -310,11 +319,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		int new_node_index = add_node(node_tree, n_stat, s_var_bind, state, output);
 		set_parent(node_tree, new_node_index, node_index, state);
 		set_second(node_tree, node_index, new_node_index, state);
-		//node_tree->nodes[node_index].second = new_node_index;
-		//printf("Node %d's second set to %d.\n", node_index, new_node_index);
-		node_tree->nodes[new_node_index].print_indent =
-			node_tree->nodes[node_tree->nodes[new_node_index].parent].print_indent + 1;
-
+		set_indent(node_tree, new_node_index, state);
 		add_token(node_tree, *i - 3, new_node_index);
 		add_token(node_tree, *i - 2, new_node_index);
 
@@ -389,6 +394,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 	// type id = -> s5 -> ?
 	else if (state == 6) {
 		if (check_type(ti, t_return, *i)) {
+			printf("state 6 returning.\n");
 			*i += 1;
 			int specific_expr_type = -1;
 			int return_node_index = add_node(node_tree, n_stat, s_return, state, output);
@@ -407,7 +413,6 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 			}
 			*i += 1;
 
-			fprintf(output, "%3d: Return node.\n  Created in state %d.\n", return_node_index, state);
 			if (check_type(ti, t_semicolon, *i)) {
 				*i += 1;
 				int expr_node_index = add_node(node_tree, n_expr, specific_expr_type, state, output);
@@ -420,20 +425,18 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 			else if (check_type(ti, t_binop, *i)) {
 				*i += 1;
 				int operator = add_node(node_tree, n_expr, e_binop, state, output);
-				node_tree->nodes[return_node_index].first = operator;
-				node_tree->nodes[operator].parent = return_node_index;
-				node_tree->nodes[operator].print_indent =
-					node_tree->nodes[node_tree->nodes[operator].parent].print_indent + 1;
+				set_second(node_tree, return_node_index, operator, state);
+				set_parent(node_tree, operator, return_node_index, state);
+				set_indent(node_tree, operator, state);
 				add_token(node_tree, *i - 1, operator);
 				fprintf(output, "%3d: Binop (%s) node.\n  Created in state %d.\n",
 					operator, ti->ts[operator].val, state);
 				int left_operand = add_node(node_tree, n_expr, specific_expr_type, state, output);
-				node_tree->nodes[operator].first = left_operand;
-				node_tree->nodes[left_operand].parent = operator;
-				node_tree->nodes[left_operand].print_indent =
-					node_tree->nodes[node_tree->nodes[left_operand].parent].print_indent + 1;
+				set_first(node_tree, operator, left_operand, state);
+				set_parent(node_tree, left_operand, operator, state);
+				set_indent(node_tree, left_operand, state);
 				add_token(node_tree, *i - 2, left_operand);
-				return parse_s(10, ti, i, node_tree, operator, fun_parent, output);
+				return parse_s(7, ti, i, node_tree, operator, fun_parent, output);
 			}
 			else {
 				printf("Parse error. Expected a semi-colon to end function body at %lu:%lu.\n",
@@ -445,10 +448,9 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		else if (check_type(ti, t_semicolon, *i)) {
 			*i += 1;
 			int new_node_index = add_node(node_tree, n_stat, s_return, state, output);
-			node_tree->nodes[node_index].second = new_node_index;
-			node_tree->nodes[new_node_index].parent = node_index;
-			node_tree->nodes[new_node_index].print_indent =
-				node_tree->nodes[node_tree->nodes[new_node_index].parent].print_indent + 1;
+			set_second(node_tree, node_index, new_node_index, state);
+			set_parent(node_tree, new_node_index, node_index, state);
+			set_indent(node_tree, new_node_index, state);
 			return parse_s(1, ti, i, node_tree, new_node_index, fun_parent, output);
 		}
 		// TODO: THIS ONLY SUPPORTS LET-STATEMENTS FOR NOW
@@ -474,9 +476,8 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 			return -1;
 		}
 		int new_node_index = add_node(node_tree, n_stat, s_var_bind, state, output);
-		node_tree->nodes[new_node_index].parent = node_index;
-		node_tree->nodes[new_node_index].print_indent =
-			node_tree->nodes[node_tree->nodes[new_node_index].parent].print_indent + 1;
+		set_parent(node_tree, new_node_index, node_index, state);
+		set_indent(node_tree, new_node_index, state);
 		add_token(node_tree, *i - 3, new_node_index);
 		add_token(node_tree, *i - 2, new_node_index);
 
@@ -613,9 +614,8 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		}
 		*i += 1;
 		int middle_operand = add_node(node_tree, n_expr, specific_type, state, output);
-		node_tree->nodes[middle_operand].parent = node_index;
-		node_tree->nodes[middle_operand].print_indent =
-			node_tree->nodes[node_tree->nodes[middle_operand].parent].print_indent + 1;
+		set_parent(node_tree, middle_operand, node_index, state);
+		set_indent(node_tree, middle_operand, state);
 		add_token(node_tree, *i - 1, middle_operand);
 
 		if (check_type(ti, t_semicolon, *i)) {
@@ -630,13 +630,12 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		else if (check_type(ti, t_binop, *i)) {
 			*i += 1;
 			int right_binop = add_node(node_tree, n_expr, e_binop, state, output);
-			node_tree->nodes[right_binop].parent = node_index;
-			node_tree->nodes[right_binop].print_indent =
-				node_tree->nodes[node_tree->nodes[right_binop].parent].print_indent + 1;
+			set_parent(node_tree, right_binop, node_index, state);
+			set_indent(node_tree, right_binop, state);
 			add_token(node_tree, *i - 1, right_binop);
 
-			node_tree->nodes[middle_operand].parent = right_binop;
-			node_tree->nodes[right_binop].first = middle_operand;
+			set_parent(node_tree, middle_operand, right_binop, state);
+			set_first(node_tree, right_binop, middle_operand, state);
 
 			char *left_operator = (node_tree->nodes[node_index].token_count > 0)
 				? ti->ts[node_tree->nodes[node_index].token_indices[0]].val
@@ -646,15 +645,15 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 			if ((strcmp(left_operator, "+") == 0) || (strcmp(left_operator, "-") == 0)) {
 				// x + y * z
 				if (strcmp(right_operator, "*") == 0 || strcmp(right_operator, "/") == 0) {
-					node_tree->nodes[node_index].second = right_binop;
+					set_second(node_tree, node_index, right_binop, state);
 				}
 				// x + y + z
 				else {
-					node_tree->nodes[node_tree->nodes[node_index].parent].second = right_binop;
-					node_tree->nodes[node_index].parent = right_binop;
-					node_tree->nodes[node_index].second = middle_operand;
-					node_tree->nodes[right_binop].first = node_index;
-					node_tree->nodes[middle_operand].parent = node_index;
+					set_second(node_tree, node_tree->nodes[node_index].parent, right_binop, state);
+					set_parent(node_tree, node_index, right_binop, state);
+					set_second(node_tree, node_index, middle_operand, state);
+					set_first(node_tree, right_binop, node_index, state);
+					set_parent(node_tree, middle_operand, node_index, state);
 					return parse_s(9, ti, i, node_tree, right_binop, fun_parent, output);
 				}
 			}
@@ -663,11 +662,11 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 				if (VERBOSE) {
 					printf("Switching the order of operations to align with PEMDAS.\n");
 				}
-				node_tree->nodes[node_tree->nodes[node_index].parent].second = right_binop;
-				node_tree->nodes[node_index].parent = right_binop;
-				node_tree->nodes[node_index].second = middle_operand;
-				node_tree->nodes[right_binop].first = node_index;
-				node_tree->nodes[middle_operand].parent = node_index;
+				set_second(node_tree, node_tree->nodes[node_index].parent, right_binop, state);
+				set_parent(node_tree, node_index, right_binop, state);
+				set_second(node_tree, node_index, middle_operand, state);
+				set_first(node_tree, right_binop, node_index, state);
+				set_parent(node_tree, middle_operand, node_index, state);
 				return parse_s(9, ti, i, node_tree, right_binop, fun_parent, output);
 			}
 			return parse_s(9, ti, i, node_tree, right_binop, fun_parent, output);
@@ -700,9 +699,8 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		}
 		*i += 1;
 		int right_operand = add_node(node_tree, n_expr, specific_type, state, output);
-		node_tree->nodes[right_operand].parent = node_index;
-		node_tree->nodes[right_operand].print_indent =
-			node_tree->nodes[node_tree->nodes[right_operand].parent].print_indent + 1;
+		set_parent(node_tree, right_operand, node_index, state);
+		set_indent(node_tree, right_operand, state);
 		add_token(node_tree, *i - 1, right_operand);
 
 		if (check_type(ti, t_semicolon, *i)) {
@@ -712,13 +710,12 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 		else if (check_type(ti, t_binop, *i)) {
 			*i += 1;
 			int right_binop = add_node(node_tree, n_expr, e_binop, state, output);
-			node_tree->nodes[right_binop].parent = node_index;
-			node_tree->nodes[right_binop].print_indent =
-				node_tree->nodes[node_tree->nodes[right_binop].parent].print_indent + 1;
+			set_parent(node_tree, right_binop, node_index, state);
+			set_indent(node_tree, right_binop, state);
 			add_token(node_tree, *i - 1, right_binop);
 
-			node_tree->nodes[right_operand].parent = right_binop;
-			node_tree->nodes[right_binop].first = right_operand;
+			set_parent(node_tree, right_operand, right_binop, state);
+			set_first(node_tree, right_binop, right_operand, state);
 
 			char *left_operator = (node_tree->nodes[node_index].token_count > 0)
 				? ti->ts[node_tree->nodes[node_index].token_indices[0]].val
@@ -726,11 +723,11 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 			char *right_operator = ti->ts[*i - 1].val;
 
 			if (strcmp(left_operator, "*") == 0 || strcmp(left_operator, "/") == 0) {
-				node_tree->nodes[node_index].second = right_binop;
+				set_second(node_tree, node_index, right_binop, state);
 			}
 			else {
-				node_tree->nodes[node_index].second = node_tree->nodes[node_index].first;
-				node_tree->nodes[node_index].first = right_binop;
+				set_first(node_tree, node_index, right_binop, state);
+				set_second(node_tree, node_index, node_tree->nodes[node_index].first, state);
 			}
 			return parse_s(10, ti, i, node_tree, right_binop, fun_parent, output);
 		}

@@ -124,12 +124,28 @@ struct ftable_index {
 struct var_binding {
 	char* id;
 	unsigned int val_length;
-	void* val;
+	int val;
 };
 
 struct vtable_index {
 	unsigned int n;
 	struct var_binding* vs;
+};
+
+struct ivar_binding {
+	char* id;
+	int val;
+};
+
+struct ivtable_index {
+	unsigned int n;
+	struct var_binding* vs;
+};
+
+enum error_codes {
+	no_error,
+	unbound_variable_name,
+	
 };
 
 void print_node(struct tree* node_tree, int n_index);

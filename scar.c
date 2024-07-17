@@ -152,6 +152,9 @@ int main(int argc, char* argv[]) {
 			print_node(node_tree, i);
 			printf(". %s. Par: %d. Fst: %d. Snd: %d.\n", ti->ts[node_tree->nodes[i].token_indices[0]].val,
 			node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
+			for (int t = 0; t < node_tree->nodes[i].token_count; t++) {
+				printf("%5d val: %s.\n", t, ti->ts[node_tree->nodes[i].token_indices[t]].val);
+			}
 		}
 		/* for (int i = 0; i < node_tree->n; i++) {
 			int indent = node_tree->nodes[i].print_indent;
@@ -182,7 +185,7 @@ int main(int argc, char* argv[]) {
 		}
  */		fclose(token_file);
 		fclose(node_file);
-		struct vtable_index* vtable = malloc(sizeof(vtable));
+		struct ivtable_index* vtable = malloc(sizeof(vtable));
 		struct ftable_index* ftable = malloc(sizeof(ftable));
 		ftable->start_fun_node = 0;
 		ftable->n = 0;
