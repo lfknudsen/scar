@@ -112,8 +112,10 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 					if (is_floating_type) {
 						is_floating_type ++;
 						char_number_add ++;
-						printf("Lexer error. Extra '.' in floating-point number");
-						printf(" at %lu:%lu\n", line_number, char_number + char_number_add);
+						if (VERBOSE) {
+							printf("Lexer error. Extra '.' in floating-point number");
+							printf(" at %lu:%lu\n", line_number, char_number + char_number_add);
+						}
 					} else {
 						is_floating_type ++;
 						string_len ++;
@@ -132,7 +134,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 				}
 			}
 			number_string[string_len] = '\0';
-			printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
+			if (VERBOSE) printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
 			if (is_floating_type) {
 				fprintf(output, "%3lu: TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
 			}
@@ -196,7 +198,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * 2;
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
-			printf("%s\n", strcpy(ti->ts[token_count].val, "*"));
+			if (VERBOSE) printf("%s\n", strcpy(ti->ts[token_count].val, "*"));
 			//ti->ts[token_count].val[1] = '\0';
 			token_count ++;
 		}
@@ -340,6 +342,6 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 		char_number += char_number_add;
 		c = fgetc(f);
 	}
-	printf("Total size of tokens: %d\nTotal size of vals:%d\n", sum_sizeof_ts, sum_sizeof_val);
+	if (VERBOSE) printf("Total size of tokens: %d\nTotal size of vals:%d\n", sum_sizeof_ts, sum_sizeof_val);
 	return token_count;
 }

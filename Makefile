@@ -1,7 +1,7 @@
 scar: scar.c lexer.c parser.c eval.c
 	gcc -o scar scar.c lexer.c parser.c eval.c -g
-test:
-	./scar test_program
+test: test.c
+	gcc -o test test.c -g
 debug:
 	gdb scar
 	break main

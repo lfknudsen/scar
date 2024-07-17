@@ -3,7 +3,7 @@
 
 #define END_STATE 128
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 enum Type {
 	int_val,
