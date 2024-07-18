@@ -25,9 +25,9 @@ int ivbind(struct ivtable_index* vtable, char* id, int val, int out) {
 	vtable->vs = realloc(vtable->vs, sizeof(*vtable->vs) * vtable->n);
 	vtable->vs[vtable->n - 1].id = id;
 	vtable->vs[vtable->n - 1].val = val;
-	printf("ID not found in vtable already, so vtable is extended. Updated vtable:\n");
-	for (int i = 0; i < vtable->n; i++) {
-		if (out >= verbose) {
+	if (out >= verbose) {
+		printf("ID not found in vtable already, so vtable is extended. Updated vtable:\n");
+		for (int i = 0; i < vtable->n; i++) {
 			printf("%2d   %3s   %2d\n", i, vtable->vs[i].id, vtable->vs[i].val);
 		}
 	}
@@ -149,9 +149,6 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 			if (n_tree->nodes[n_index].first != -1) {
 				struct ivtable_index* new_vtable = malloc(sizeof(vtable));
 				new_vtable->n = 0;
-				//new_vtable->vs = malloc(sizeof(vtable->vs) * vtable->n);
-				//memcpy(new_vtable->vs, vtable->vs, sizeof(vtable->vs) * vtable->n);
-				//eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
 				if (n_tree->nodes[n_index].second != -1) {
 					if (out >= verbose) printf("Evaluating function body.\n");
 					int result = eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable, out);
@@ -168,16 +165,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 		// Variable binding statement
 		else if (n_tree->nodes[n_index].specific_type == s_var_bind) {
 			char* var_name = ti->ts[n_tree->nodes[n_index].token_indices[1]].val;
-			//size_t size_of_val = sizeof(int);
 			int value = eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable, out);
-			/*
-			struct vtable_index* new_vtable = malloc(sizeof(vtable));
-			new_vtable->n = vtable->n;
-			new_vtable->vs = malloc(sizeof(new_vtable->vs) * new_vtable->n);
-			memcpy(new_vtable->vs, vtable->vs, sizeof(vtable->vs) * vtable->n);
-			vbind(new_vtable, var_name, &value, size_of_val);	
-			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
-			*/
 			struct ivtable_index* new_vtable = malloc(sizeof(vtable));
 			new_vtable->n = vtable->n;
 			new_vtable->vs = malloc(sizeof(*new_vtable->vs) * new_vtable->n);
@@ -196,22 +184,6 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 	// Variable/Value.
 	else if (n_tree->nodes[n_index].nodetype == n_expr) {
 		if (n_tree->nodes[n_index].specific_type == e_id) {
-			/*void* result = malloc(sizeof(int));
-			if (n_tree->nodes[n_index].token_count == 0) {
-				printf("No variable name info passed along.\n");
-			}
-			else {
-				for (int i = 0; i < vtable->n; i++) {
-					if (strcmp(vtable->vs[i].id, seeking) == 0) {
-						memcpy(result, vtable->vs[i].val, sizeof(int));
-						break;
-					}
-				}
-				printf("Found number\n");
-				int number = (int) result;
-				free(result);
-				return number;
-			}*/
 			char* seeking = ti->ts[n_tree->nodes[n_index].token_indices[0]].val;
 			if (out >= verbose) printf("Looking for variable named \"%s\" in the vtable.\n",
 				ti->ts[n_tree->nodes[n_index].token_indices[0]].val);
@@ -246,12 +218,16 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				}
 				int result1 = eval(n_tree, n->first, ti, output, vtable, ftable, out);
 				int result2 = eval(n_tree, n->second, ti, output, vtable, ftable, out);
+				if (n->token_count <= 0) {
+					if (out >= standard) printf("Binary operation did not have a token specifying its type.\n");
+					return -1;
+				}
 				char* operator = ti->ts[n->token_indices[0]].val;
 				if (out >= verbose) printf("Calculating %d %s %d\n", result1, operator, result2);
-				if 		(strcmp(operator, "+") == 0) return result1 + result2;
-				else if (strcmp(operator, "-") == 0) return result1 - result2;
-				else if (strcmp(operator, "*") == 0) return result1 * result2;
-				else if (strcmp(operator, "/") == 0) return result1 / result2;
+				if 		(strcmp(operator, "+") == 0) return (result1 + result2);
+				else if (strcmp(operator, "-") == 0) return (result1 - result2);
+				else if (strcmp(operator, "*") == 0) return (result1 * result2);
+				else if (strcmp(operator, "/") == 0) return (result1 / result2);
 				else { if (out >= verbose) printf("No BINOP operator specified in node.\n"); }
 			}
 			else {
@@ -280,5 +256,7 @@ int start_eval(struct tree* n_tree, int n_index, struct token_index* ti,
 		}
 		printf("Now evaluating main node.\n");
 	}
-	return eval(n_tree, ftable->start_fun_node, ti, output, vtable, ftable, out);
+	int result = eval(n_tree, ftable->start_fun_node, ti, output, vtable, ftable, out);
+	if (out >= verbose) printf("Finished evaluating. Returning.\n");
+	return result;
 }

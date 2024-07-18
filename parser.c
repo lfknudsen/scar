@@ -42,10 +42,6 @@ s8 -> BINOP -> s8 ->
 s9 -> 
 */
 
-/*
-Bug with an opening return statement having one or more binary operators.
-*/
-
 void set_first(struct tree *n_tree, int n_index, int value, int state, int out) {
     n_tree->nodes[n_index].first = value;
     if (out >= verbose) {
@@ -80,8 +76,8 @@ void set_indent(struct tree *n_tree, int n_index, int state, int out) {
     }
 }
 
-void debug_print(int state, unsigned int index) {
-    //if (out >= verbose) printf("Current state: %d\nToken index: %u\n", state, index);
+void debug_print(int state, unsigned int index, int out) {
+    if (out >= verbose) printf("Current state: %d\nToken index: %u\n", state, index);
 }
 
 // Add a new node to the tree.
@@ -158,26 +154,26 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
     // type id ( -> s2
     // fun_parent = top node of entire program?
     else if (state == 1) {
-        if (ti->n == *i) return END_STATE;
+        if (ti->n <= *i) return END_STATE;
         // Program must consist of only functions at its highest level, and must have at least one function.
         if (!check_type(ti, t_type, *i, out)) {
             if (out >= standard) printf("Parse error. Expected function type at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         *i += 1;
         if (!check_type(ti, t_id, *i, out)) {
             if (out >= standard) printf("Parse error. Expected function name at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         *i += 1;
         if (!check_type(ti, t_par_beg, *i, out)) {
             if (out >= standard) printf("Parse error. Expected '(' to precede function parameters at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         *i += 1;
@@ -221,7 +217,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
             else {
                 if (out >= standard) printf("Parse error. Expected '=' to precede function body at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-                debug_print(state, *i);
+                debug_print(state, *i, out);
                 return -1;
             }
         }
@@ -229,14 +225,14 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected parameter type at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         if (check_type(ti, t_id, *i, out)) *i += 1;
         else {
             if (out >= standard) printf("Parse error. Expected parameter name at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
 
@@ -258,14 +254,14 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected ')' to proceed function parameters at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         if (check_type(ti, t_eq, *i, out)) *i += 1;
         else {
             if (out >= standard) printf("Parse error. Expected '=' to indicate start of function body at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         return parse_s(4, ti, i, node_tree, node_tree->nodes[node_index].parent, fun_parent, output, out);
@@ -286,7 +282,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
 
             if (check_type(ti, t_semicolon, *i, out)) {
                 if (out == standard) printf("Warning: Empty function body at %lu:%lu.\n", t[*i].line_number, t[*i].char_number);
-                debug_print(state, *i);
+                debug_print(state, *i, out);
                 *i += 1;
                 return parse_s(1, ti, i, node_tree, return_node_index, node_tree->nodes[node_index].parent, output, out);
             }
@@ -299,21 +295,21 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out == standard) printf("Parse error. Expected a type to begin variable declaration at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         if (check_type(ti, t_id, *i, out)) *i += 1;
         else {
             if (out >= standard) printf("Parse error. Expected a variable name at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         if (check_type(ti, t_eq, *i, out)) *i += 1;
         else {
             if (out >= standard) printf("Parse error. Expected an equals symbol for variable declaration at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         int new_node_index = add_node(node_tree, n_stat, s_var_bind, state, output, out);
@@ -324,13 +320,6 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         add_token(node_tree, *i - 2, new_node_index, out);
 
         return parse_s(5, ti, i, node_tree, new_node_index, node_index, output, out);
-        /*
-        return
-            parse_s (
-                parse_s(5, ti, i, node_tree, new_node_index, node_index, output, out),
-            ti, i, node_tree, new_node_index, node_index, output
-            );
-        */
     }
     // State used to evaluate the value of the right side of an equals sign.
     // num ; -> return 6
@@ -349,7 +338,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a value to bind to variable \"%s\"(%lu:%lu) at %lu:%lu.\n",
             t[*i-2].val, t[*i-2].line_number, t[*i-2].char_number, t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         *i += 1;
@@ -383,7 +372,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator to follow variable value \"%s\"(%lu:%lu) at %lu:%lu.\n",
             t[*i-2].val, t[*i-2].line_number, t[*i-2].char_number, t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
     }
@@ -411,7 +400,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
             else {
                 if (out >= standard) printf("Parse error. Expected a value or semi-colon to end function body at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-                debug_print(state, *i);
+                debug_print(state, *i, out);
                 return -1;
             }
             *i += 1;
@@ -444,7 +433,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
             else {
                 if (out >= standard) printf("Parse error. Expected a semi-colon to end function body at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-                debug_print(state, *i);
+                debug_print(state, *i, out);
                 return -1;
             }
         }
@@ -461,21 +450,21 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a type to begin variable declaration at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         if (check_type(ti, t_id, *i, out)) *i += 1;
         else {
             if (out >= standard) printf("Parse error. Expected a variable name at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         if (check_type(ti, t_eq, *i, out)) *i += 1;
         else {
             if (out >= standard) printf("Parse error. Expected an equals symbol for variable declaration at %lu:%lu.\n",
             t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         int new_node_index = add_node(node_tree, n_stat, s_var_bind, state, output, out);
@@ -505,7 +494,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a return value or semi-colon to end function body at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
 
@@ -519,6 +508,12 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
             add_token(node_tree, *i - 2, expr_node_index, out);
             return parse_s(1, ti, i, node_tree, expr_node_index, node_tree->nodes[fun_parent].parent, output, out);
         }
+        // Create a node for the operator, with the symbol token connected.
+        // Create a node for the operand to the left of the operator, with the value symbol connected.
+        // The operator's parent is the previously-created node (a return), and the operator becomes that node's second.
+        // The operand's parent is the operator. It is the operator's first.
+        // Continue to state 8, with the operator as the node index.
+        // This will be evaluated from right to left.
         else if (check_type(ti, t_binop, *i, out)) {
             *i += 1;
             int operator = add_node(node_tree, n_expr, e_binop, state, output, out);
@@ -536,14 +531,14 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
     }
     // Parsing "y (+) z" in expression "x (+) y (+) z"
-    // node_index is "y (+) z"
+    // node_index is the binary operator in "x (+) y"
     // node_index.first = y
-    // node_index.parent = binop expression x (+) node_index
+    // node_index.parent is the first statement in a function, and is a return statement.
     // z is unknown and could be another binop expression.
     // z is currently pointed to by *i.
     // id/num ; -> s1
@@ -556,7 +551,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a right operand at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         *i += 1;
@@ -569,29 +564,51 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
             add_token(node_tree, *i - 2, expr_node_index, out);
             return parse_s(1, ti, i, node_tree, node_index, node_tree->nodes[fun_parent].parent, output, out);
         }
+        // Create a node for the operator, with the symbol token connected.
+        // Create a node for the to operand the left of the operator, with the value symbol connected.
+        // The operator's parent is the previously-created node (a binop), and the operator becomes that node's second.
+        // The operand's parent is the operator. It is the operator's first.
+        // Continue to state 8, with the operator as the node index.
+        // This will be evaluated from right to left.
         else if (check_type(ti, t_binop, *i, out)) {
             *i += 1;
-            int operator = add_node(node_tree, n_expr, e_binop, state, output, out);
-            int expr_node_index = add_node(node_tree, n_expr, expr_specific_type, state, output, out);
-            add_token(node_tree, *i - 2, expr_node_index, out);
-            add_token(node_tree, *i - 1, operator, out);
-            set_parent(node_tree, operator, node_index, state, out);
-            set_parent(node_tree, expr_node_index, operator, state, out);
-            set_first(node_tree, operator, expr_node_index, state, out);
-            set_second(node_tree, node_index, operator, state, out);
-            set_indent(node_tree, operator, state, out);
-            set_indent(node_tree, expr_node_index, state, out);
-
-            char *left_operator = (node_tree->nodes[node_index].token_count > 0)
+            int right_operator = add_node(node_tree, n_expr, e_binop, state, output, out);
+            int expression = add_node(node_tree, n_expr, expr_specific_type, state, output, out);
+            add_token(node_tree, *i - 2, expression, out);
+            add_token(node_tree, *i - 1, right_operator, out);
+            char* left_symbol = (node_tree->nodes[node_index].token_count > 0)
                 ? ti->ts[node_tree->nodes[node_index].token_indices[0]].val
                 : ti->ts[*i - 3].val;
-
-            return parse_s(8, ti, i, node_tree, operator, fun_parent, output, out);
+            char* right_symbol = (node_tree->nodes[right_operator].token_count > 0)
+                ? ti->ts[node_tree->nodes[right_operator].token_indices[0]].val
+                : ti->ts[*i - 1].val;
+            if ((strcmp(left_symbol,"+") == 0 || strcmp(left_symbol,"-") == 0) &&
+                (strcmp(right_symbol,"*") == 0 || strcmp(right_symbol,"/") == 0)) {
+                    if (out >= verbose) printf("Symbol order of +- _ */\n");
+                    set_parent(node_tree, right_operator, node_index, state, out);
+                    set_parent(node_tree, expression, right_operator, state, out);
+                    set_first(node_tree, right_operator, expression, state, out);
+                    set_second(node_tree, node_index, right_operator, state, out);
+                    set_indent(node_tree, right_operator, state, out);
+                    set_indent(node_tree, expression, state, out);
+            }
+            else {
+                set_parent(node_tree, right_operator, node_tree->nodes[node_index].parent, state, out);
+                set_parent(node_tree, node_index, right_operator, state, out);
+                set_parent(node_tree, expression, right_operator, state, out);
+                set_first(node_tree, right_operator, node_index, state, out);
+                set_second(node_tree, node_tree->nodes[right_operator].parent, right_operator, state, out);
+                set_second(node_tree, node_index, expression, state, out);
+                set_indent(node_tree, expression, state, out);
+                set_indent(node_tree, right_operator, state, out);
+                set_indent(node_tree, node_index, state, out);
+            }
+            return parse_s(8, ti, i, node_tree, right_operator, fun_parent, output, out);
         }
         else {
             if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
     }
@@ -612,7 +629,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a right operand at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         *i += 1;
@@ -632,52 +649,43 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         // node_index.parent is unknown.
         else if (check_type(ti, t_binop, *i, out)) {
             *i += 1;
-            int right_binop = add_node(node_tree, n_expr, e_binop, state, output, out);
-            set_parent(node_tree, right_binop, node_index, state, out);
-            set_indent(node_tree, right_binop, state, out);
-            add_token(node_tree, *i - 1, right_binop, out);
-
-            set_parent(node_tree, middle_operand, right_binop, state, out);
-            set_first(node_tree, right_binop, middle_operand, state, out);
-
-            char *left_operator = (node_tree->nodes[node_index].token_count > 0)
+            int right_operator = add_node(node_tree, n_expr, e_binop, state, output, out);
+            int expression = add_node(node_tree, n_expr, specific_type, state, output, out);
+            add_token(node_tree, *i - 2, expression, out);
+            add_token(node_tree, *i - 1, right_operator, out);
+            char* left_symbol = (node_tree->nodes[node_index].token_count > 0)
                 ? ti->ts[node_tree->nodes[node_index].token_indices[0]].val
                 : ti->ts[*i - 3].val;
-            char *right_operator = ti->ts[*i - 1].val;
-
-            if ((strcmp(left_operator, "+") == 0) || (strcmp(left_operator, "-") == 0)) {
-                // x + y * z
-                if (strcmp(right_operator, "*") == 0 || strcmp(right_operator, "/") == 0) {
-                    set_second(node_tree, node_index, right_binop, state, out);
-                }
-                // x + y + z
-                else {
-                    set_second(node_tree, node_tree->nodes[node_index].parent, right_binop, state, out);
-                    set_parent(node_tree, node_index, right_binop, state, out);
-                    set_second(node_tree, node_index, middle_operand, state, out);
-                    set_first(node_tree, right_binop, node_index, state, out);
-                    set_parent(node_tree, middle_operand, node_index, state, out);
-                    return parse_s(9, ti, i, node_tree, right_binop, fun_parent, output, out);
-                }
+            char* right_symbol = (node_tree->nodes[right_operator].token_count > 0)
+                ? ti->ts[node_tree->nodes[right_operator].token_indices[0]].val
+                : ti->ts[*i - 1].val;
+            if ((strcmp(left_symbol,"+") == 0 || strcmp(left_symbol,"-") == 0) &&
+                (strcmp(right_symbol,"*") == 0 || strcmp(right_symbol,"/") == 0)) {
+                    if (out >= verbose) printf("Symbol order of +- _ */\n");
+                    set_parent(node_tree, right_operator, node_index, state, out);
+                    set_parent(node_tree, expression, right_operator, state, out);
+                    set_first(node_tree, right_operator, expression, state, out);
+                    set_second(node_tree, node_index, right_operator, state, out);
+                    set_indent(node_tree, right_operator, state, out);
+                    set_indent(node_tree, expression, state, out);
             }
-            // x * y + z
             else {
-                if (out >= verbose) {
-                    printf("Switching the order of operations to align with PEMDAS.\n");
-                }
-                set_second(node_tree, node_tree->nodes[node_index].parent, right_binop, state, out);
-                set_parent(node_tree, node_index, right_binop, state, out);
-                set_second(node_tree, node_index, middle_operand, state, out);
-                set_first(node_tree, right_binop, node_index, state, out);
-                set_parent(node_tree, middle_operand, node_index, state, out);
-                return parse_s(9, ti, i, node_tree, right_binop, fun_parent, output, out);
+                set_parent(node_tree, right_operator, node_tree->nodes[node_index].parent, state, out);
+                set_parent(node_tree, node_index, right_operator, state, out);
+                set_parent(node_tree, expression, right_operator, state, out);
+                set_first(node_tree, right_operator, node_index, state, out);
+                set_second(node_tree, node_tree->nodes[right_operator].parent, right_operator, state, out);
+                set_second(node_tree, node_index, expression, state, out);
+                set_indent(node_tree, expression, state, out);
+                set_indent(node_tree, right_operator, state, out);
+                set_indent(node_tree, node_index, state, out);
             }
-            return parse_s(9, ti, i, node_tree, right_binop, fun_parent, output, out);
+            return parse_s(9, ti, i, node_tree, right_operator, fun_parent, output, out);
         }
         else {
             if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
     }
@@ -697,7 +705,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a right operand at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
         *i += 1;
@@ -737,7 +745,7 @@ int parse_s(int state, struct token_index* ti, int* i, struct tree* node_tree, i
         else {
             if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
                 t[*i].line_number, t[*i].char_number);
-            debug_print(state, *i);
+            debug_print(state, *i, out);
             return -1;
         }
     }

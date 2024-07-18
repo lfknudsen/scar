@@ -117,7 +117,7 @@ void free_vtable(struct vtable_index* vt) {
 }
 
 void free_ivtable(struct ivtable_index* vt) {
-    free(vt->vs);
+    //free(vt->vs);
     free(vt);
 }
 
@@ -154,7 +154,8 @@ int main(int argc, char* argv[]) {
     else if (argc >= 3) filename = argv[2];
     FILE* read_ptr = fopen(filename, "r");
     if (read_ptr == NULL) {
-        char* retry_dir = malloc(sizeof(program_dir) + sizeof(filename));
+        //printf("About to retry.\n");
+        char* retry_dir = malloc(strlen(program_dir) + strlen(filename));
         sprintf(retry_dir, "%s%s", program_dir, filename);
         read_ptr = fopen(retry_dir, "r");
         free(retry_dir);
@@ -191,21 +192,24 @@ int main(int argc, char* argv[]) {
             }
         }
         FILE* token_file = fopen("tokens.out", "r");
-        if (token_file == NULL) { printf("Token file not found.\n"); return 1; }
+        if (token_file == NULL) {
+            if (out >= standard) printf("Token file not found.\n");
+            return 1;
+        }
         FILE* node_file = fopen("nodes.out", "w");
         if (node_file == NULL) {
-            printf("Could not create node file.\n");
+            if (out >= standard) printf("Could not create node file.\n");
             fclose(token_file);
             return 1;
         }
         struct tree* node_tree = parse(token_file, node_file, ti, out);
-        if (node_tree == NULL) { printf("Could not parse file.\n"); return 1; }
+        if (node_tree == NULL) { if (out >= standard) printf("Could not parse file.\n"); return 1; }
         if (out >= verbose) {
             printf("Nodes: %d\n", node_tree->n);
             for (int i = 0; i < node_tree->n; i++) {
                 printf("%3d: ", i);
                 print_node(node_tree, i, out);
-                printf(". %s. Par: %d. Fst: %d. Snd: %d.\n", ti->ts[node_tree->nodes[i].token_indices[0]].val,
+                printf("Par: %d. Fst: %d. Snd: %d.\n", 
                 node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
                 for (int t = 0; t < node_tree->nodes[i].token_count; t++) {
                     printf("%5d val: %s.\n", t, ti->ts[node_tree->nodes[i].token_indices[t]].val);
@@ -250,6 +254,7 @@ int main(int argc, char* argv[]) {
         vtable->n = 0;
         FILE* eval_output = fopen("eval.out", "w");
         int result = start_eval(node_tree, 0, ti, eval_output, vtable, ftable, out);
+        if (out >= verbose) printf("Returned from final evaluation.\n");
         printf("%d\n", result);
         fclose(eval_output);
         if (out >= verbose) {
@@ -259,6 +264,7 @@ int main(int argc, char* argv[]) {
                 else printf("\n");
             }
         }
+        if (out >= verbose) printf("Finishing up. Freeing allocated memory.\n");
         free_ftable(ftable);
         free_ivtable(vtable);
         free_nodes(node_tree);

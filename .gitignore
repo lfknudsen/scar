@@ -52,5 +52,7 @@ Mkfile.old
 dkms.conf
 
 # Editor settings
-.vs/
-.vscode/
+.vs/*
+.vscode/*
+!tests/**/*
+tests/out/*
