@@ -91,10 +91,10 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			}
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * (string_len);
+			size_t sizeof_val = strlen(letter_string) + 1;
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
-			strcpy(ti->ts[token_count].val, letter_string);
+			strncpy(ti->ts[token_count].val, letter_string, sizeof_val);
 			token_count ++;
 			char_number += char_number_add;
 			free(letter_string);
@@ -158,10 +158,10 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			ti->ts[token_count].type = (is_floating_type) ? t_num_float : t_num_int;
 			ti->ts[token_count].line_number = line_number;
 			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof(*ti->ts[token_count].val) * (string_len);
+			size_t sizeof_val = strlen(number_string) + 1;
 			sum_sizeof_val += sizeof_val;
-			ti->ts[token_count].val = malloc(sizeof(*ti->ts[token_count].val) * (string_len));
-			strcpy(ti->ts[token_count].val, number_string);
+			ti->ts[token_count].val = malloc(sizeof_val);
+			strncpy(ti->ts[token_count].val, number_string, sizeof_val);
 			ti->ts[token_count].val[string_len] = '\0';
 			token_count ++;
 

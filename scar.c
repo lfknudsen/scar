@@ -139,9 +139,6 @@ int main(int argc, char* argv[]) {
         } else if (strcmp(argv[1],"-v") == 0) {
             printf("Verbose output activated.\n");
             out = verbose;
-            int x = out;
-            printf("out returns %d\n", x);
-            printf("out equals %d\n", out);
         }
     }
     if (out == verbose) {
@@ -244,12 +241,15 @@ int main(int argc, char* argv[]) {
         }
  */		fclose(token_file);
         fclose(node_file);
-        struct ivtable_index* vtable = malloc(sizeof(vtable));
-        struct ftable_index* ftable = malloc(sizeof(ftable));
+        struct ivtable_index* vtable = malloc(sizeof(*vtable));
+        struct ftable_index* ftable = malloc(sizeof(*ftable));
         ftable->start_fun_node = 0;
         ftable->n = 0;
+        ftable->fs = malloc(sizeof(ftable->fs));
+        vtable->vs = malloc(sizeof(vtable->vs));
+        vtable->n = 0;
         FILE* eval_output = fopen("eval.out", "w");
-        int result = start_eval(node_tree, 0, ti, eval_output, vtable, ftable);
+        int result = start_eval(node_tree, 0, ti, eval_output, vtable, ftable, out);
         printf("%d\n", result);
         fclose(eval_output);
         if (out >= verbose) {

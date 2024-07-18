@@ -7,10 +7,17 @@
 // Bind a variable name to a given integer value.
 // Returns the index in the vtable.
 // Does not detect failure.
-int ivbind(struct ivtable_index* vtable, char* id, int val) {
+int ivbind(struct ivtable_index* vtable, char* id, int val, int out) {
+	if (out >= verbose) printf("Entering vtable bind with id %s and value %d.\n", id, val);
 	for (int i = 0; i < vtable->n; i++) {
 		if (strcmp(vtable->vs[i].id, id) == 0) {
 			vtable->vs[i].val = val;
+			if (out >= verbose) {
+				printf("ID already existed in vtable. Updated vtable:\n");
+				for (int j = 0; j < vtable->n; j++) {
+					printf("%2d   %3s   %2d\n", j, vtable->vs[j].id, vtable->vs[j].val);
+				}
+			}
 			return i;
 		}
 	}
@@ -18,6 +25,12 @@ int ivbind(struct ivtable_index* vtable, char* id, int val) {
 	vtable->vs = realloc(vtable->vs, sizeof(*vtable->vs) * vtable->n);
 	vtable->vs[vtable->n - 1].id = id;
 	vtable->vs[vtable->n - 1].val = val;
+	printf("ID not found in vtable already, so vtable is extended. Updated vtable:\n");
+	for (int i = 0; i < vtable->n; i++) {
+		if (out >= verbose) {
+			printf("%2d   %3s   %2d\n", i, vtable->vs[i].id, vtable->vs[i].val);
+		}
+	}
 	return vtable->n - 1;
 }
 
@@ -45,8 +58,14 @@ void vbind(struct vtable_index* vtable, char* id, void* val, unsigned int val_le
 // Result is stored in-place in the 'destination' parameter.
 // Returns 0 on success.
 // Returns unbound_variable_name on failure.
-int lookup(struct ivtable_index* vtable, char* id, int* destination) {
+int lookup(struct ivtable_index* vtable, char* id, int* destination, int out) {
+	if (out >= verbose) {
+		printf("Searching vtable.\n");
+	}
 	for (unsigned int i = 0; i < vtable->n; i++) {
+		if (out >= verbose) {
+			printf("%2d   %3s   %3d\n", i, vtable->vs[i].id, vtable->vs[i].val);
+		}
 		if (strcmp(vtable->vs[i].id, id) == 0) {
 			*destination = vtable->vs[i].val;
 			return 0;
@@ -61,7 +80,7 @@ int lookup(struct ivtable_index* vtable, char* id, int* destination) {
 //  id		= string name of function.
 //  n_index = index of the top function node, whose parent is an n_prog, and
 //			  whose children are the parameter declaration and function body.
-int fbind(struct ftable_index* ftable, char* id, unsigned int node_index) {
+int fbind(struct ftable_index* ftable, char* id, unsigned int node_index, int out) {
 	if (strcmp(id, "main") == 0) ftable->start_fun_node = node_index;
 	for (int i = 0; i < ftable->n; i++) {
 		if (strcmp(ftable->fs[i].id,id) == 0) {
@@ -78,18 +97,18 @@ int fbind(struct ftable_index* ftable, char* id, unsigned int node_index) {
 }
 
 int assemble_ftable(struct tree* n_tree, int n_index, struct token_index* ti,
-		FILE* output, struct vtable_index* vtable, struct ftable_index* ftable) {
+		FILE* output, struct vtable_index* vtable, struct ftable_index* ftable, int out) {
 	if (n_tree->nodes[n_index].nodetype == n_prog) {
 		if (n_tree->nodes[n_index].first != -1) {
-			return assemble_ftable(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
+			return assemble_ftable(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable, out);
 		}
 		if (n_tree->nodes[n_index].second != -1) {
-			return assemble_ftable(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable);
+			return assemble_ftable(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable, out);
 		}
 	}
 	else if (n_tree->nodes[n_index].nodetype == n_stat &&
 		n_tree->nodes[n_index].specific_type == s_fun_bind) {
-		return fbind(ftable, ti->ts[n_tree->nodes[n_index].token_indices[1]].val, n_index);
+		return fbind(ftable, ti->ts[n_tree->nodes[n_index].token_indices[1]].val, n_index, out);
 	}
 }
 
@@ -98,12 +117,12 @@ int assemble_ftable(struct tree* n_tree, int n_index, struct token_index* ti,
 // how the node structure works later. It's also less reliant on parsing working correctly,
 // making it easier to spot where mistakes are happening.
 int careful_build_ftable(struct tree* n_tree, struct token_index* ti,
-		FILE* output, struct ftable_index* ftable) {
+		FILE* output, struct ftable_index* ftable, int out) {
 	for (int i = 0; i < n_tree->n; i++) {
 		if (n_tree->nodes[i].nodetype == n_stat &&
 			n_tree->nodes[i].specific_type == s_fun_bind) {
 			if (out >= verbose) printf("Adding function \"%s\" to ftable.\n", ti->ts[n_tree->nodes[i].token_indices[1]].val);
-			fbind(ftable, ti->ts[n_tree->nodes[i].token_indices[1]].val, i);
+			fbind(ftable, ti->ts[n_tree->nodes[i].token_indices[1]].val, i, out);
 		}
 	}
 }
@@ -118,7 +137,7 @@ int careful_build_ftable(struct tree* n_tree, struct token_index* ti,
 //  'vtable': the variable table.
 //  'ftable': the function table.
 int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
-		struct ivtable_index* vtable, struct ftable_index* ftable) {
+		struct ivtable_index* vtable, struct ftable_index* ftable, int out) {
 	if (out >= verbose) {
 		printf("Evaluating (node %d): ", n_index);
 		print_node(n_tree, n_index, out);
@@ -135,7 +154,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				//eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
 				if (n_tree->nodes[n_index].second != -1) {
 					if (out >= verbose) printf("Evaluating function body.\n");
-					int result = eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
+					int result = eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable, out);
 					free_ivtable(new_vtable);
 					return result;
 				}
@@ -150,7 +169,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 		else if (n_tree->nodes[n_index].specific_type == s_var_bind) {
 			char* var_name = ti->ts[n_tree->nodes[n_index].token_indices[1]].val;
 			//size_t size_of_val = sizeof(int);
-			int value = eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable);
+			int value = eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable, out);
 			/*
 			struct vtable_index* new_vtable = malloc(sizeof(vtable));
 			new_vtable->n = vtable->n;
@@ -161,13 +180,15 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 			*/
 			struct ivtable_index* new_vtable = malloc(sizeof(vtable));
 			new_vtable->n = vtable->n;
-			new_vtable->vs = malloc(sizeof(new_vtable->vs) * new_vtable->n);
-			memcpy(new_vtable->vs, vtable->vs, sizeof(vtable->vs) * vtable->n);
-			ivbind(new_vtable, var_name, value);
-			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable);
+			new_vtable->vs = malloc(sizeof(*new_vtable->vs) * new_vtable->n);
+			memcpy(new_vtable->vs, vtable->vs, sizeof(*vtable->vs) * vtable->n);
+			ivbind(new_vtable, var_name, value, out);
+			int result = eval(n_tree, n_tree->nodes[n_index].second, ti, output, new_vtable, ftable, out);
+			free_ivtable(new_vtable);
+			return result;
 		}
 		else if (n_tree->nodes[n_index].specific_type == s_return) {
-			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable);
+			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable, out);
 		}
 		if (out >= verbose) printf("Missing implementation. Specific type: %d\n", n_tree->nodes[n_index].specific_type);
 		return -1;
@@ -192,8 +213,10 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				return number;
 			}*/
 			char* seeking = ti->ts[n_tree->nodes[n_index].token_indices[0]].val;
+			if (out >= verbose) printf("Looking for variable named \"%s\" in the vtable.\n",
+				ti->ts[n_tree->nodes[n_index].token_indices[0]].val);
 			int result;
-			lookup(vtable, seeking, &result);
+			lookup(vtable, seeking, &result, out);
 			return result;
 		}	
 		else if (n_tree->nodes[n_index].specific_type == e_val) {
@@ -221,8 +244,8 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 					if (out >= verbose) printf("Evaluation error: No second child node found in binary operation (node %d).\n", n_index);
 					return -5;
 				}
-				int result1 = eval(n_tree, n->first, ti, output, vtable, ftable);
-				int result2 = eval(n_tree, n->second, ti, output, vtable, ftable);
+				int result1 = eval(n_tree, n->first, ti, output, vtable, ftable, out);
+				int result2 = eval(n_tree, n->second, ti, output, vtable, ftable, out);
 				char* operator = ti->ts[n->token_indices[0]].val;
 				if (out >= verbose) printf("Calculating %d %s %d\n", result1, operator, result2);
 				if 		(strcmp(operator, "+") == 0) return result1 + result2;
@@ -241,14 +264,14 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 }
 
 int start_eval(struct tree* n_tree, int n_index, struct token_index* ti,
-		FILE* output, struct ivtable_index* vtable, struct ftable_index* ftable) {
+		FILE* output, struct ivtable_index* vtable, struct ftable_index* ftable, int out) {
 	if (n_tree->n < n_index) return -1;
 	//struct ftable_index* new_ftable = malloc(sizeof(ftable));
 	//new_ftable->n = ftable->n;
 	//new_ftable->fs = malloc(sizeof(new_table->fs) * new_ftable->n);
 	//memcpy(new_ftable->fs, ftable->fs, sizeof(ftable->fs) * ftable->n);
 	//assemble_ftable(n_tree, n_index, ti, output, vtable, ftable);
-	careful_build_ftable(n_tree, ti, output, ftable);
+	careful_build_ftable(n_tree, ti, output, ftable, out);
 	if (out >= verbose) {
 		printf("Assembled ftable (length %d):\n", ftable->n);
 		for (int f = 0; f < ftable->n; f++) {
@@ -257,5 +280,5 @@ int start_eval(struct tree* n_tree, int n_index, struct token_index* ti,
 		}
 		printf("Now evaluating main node.\n");
 	}
-	return eval(n_tree, ftable->start_fun_node, ti, output, vtable, ftable);
+	return eval(n_tree, ftable->start_fun_node, ti, output, vtable, ftable, out);
 }
