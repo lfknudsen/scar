@@ -172,6 +172,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Lexing
     struct token_index *ti = malloc(sizeof(*ti));
     ti->ts = malloc(sizeof(*ti->ts));
     ti->n = 0;
@@ -202,6 +203,7 @@ int main(int argc, char* argv[]) {
             fclose(token_file);
             return 1;
         }
+        // Parsing
         struct tree* node_tree = parse(token_file, node_file, ti, out);
         if (node_tree == NULL) { if (out >= standard) printf("Could not parse file.\n"); return 1; }
         if (out >= verbose) {
@@ -209,7 +211,7 @@ int main(int argc, char* argv[]) {
             for (int i = 0; i < node_tree->n; i++) {
                 printf("%3d: ", i);
                 print_node(node_tree, i, out);
-                printf("Par: %d. Fst: %d. Snd: %d.\n", 
+                printf(". Par: %d. Fst: %d. Snd: %d.\n", 
                 node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
                 for (int t = 0; t < node_tree->nodes[i].token_count; t++) {
                     printf("%5d val: %s.\n", t, ti->ts[node_tree->nodes[i].token_indices[t]].val);
@@ -243,7 +245,9 @@ int main(int argc, char* argv[]) {
                 printf("\n");
             }
         }
- */		fclose(token_file);
+ */
+        // Evaluating
+        fclose(token_file);
         fclose(node_file);
         struct ivtable_index* vtable = malloc(sizeof(*vtable));
         struct ftable_index* ftable = malloc(sizeof(*ftable));
