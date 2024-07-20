@@ -1,0 +1,19 @@
+s0 -> s1
+s1 -> Type Id ( -> s2
+s1 -> -> END
+s2 -> Type Id -> s3
+s2 -> ) = -> s4
+s3 -> , -> s2
+s3 -> ) = -> s4
+s4 -> Type Id = -> s5 (everything up to semicolon is saved to fst. Then next node is saved to snd. Then back to s4 again.)
+s4 -> return -> s7
+s5 -> Val ; -> s6
+s5 -> Val BINOP -> s8
+s6 -> Type Id = -> s5
+s6 -> return ; -> s1
+s6 -> return Id ; -> s1
+s7 -> ; -> s1 (warning)
+s7 -> Val ; -> s1
+s7 -> Val BINOP -> s8
+s8 -> Val ; -> (return the new node back up to fst).
+s8 -> Val BINOP -> s8
