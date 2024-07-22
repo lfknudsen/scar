@@ -17,3 +17,22 @@ s7 -> Val ; -> s1
 s7 -> Val BINOP -> s8
 s8 -> Val ; -> (return the new node back up to fst).
 s8 -> Val BINOP -> s8
+
+
+
+state 4:
+see type id eq, and so:
+node 4 (a)
+  parent = function bind
+  first = -1
+  function bind's second = node 4
+
+state 5:
+see val + binop, and so:
+create node 5 (+)
+create node 6 (1)
+
+node 4's first is set to node 5.
+node 5's parent is set to node 4.
+node 5's first is set to node 6.
+node 6's parent is set to node 5.

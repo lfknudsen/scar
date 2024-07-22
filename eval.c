@@ -235,6 +235,30 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				return -4;
 			}
 		}
+		else if (n_tree->nodes[n_index].specific_type == e_comp) {
+			struct node* n = &n_tree->nodes[n_index];
+			if (n->token_count > 0) {
+				if (n->first == -1) {
+					if (out >= verbose) printf("Evaluation error: No first child node found in comparison operation (node %d).\n", n_index);
+					return -5;
+				}
+				if (n->second == -1) {
+					if (out >= verbose) printf("Evaluation error: No second child node found in comparison operation (node %d).\n", n_index);
+					return -5;
+				}
+				int result1 = eval(n_tree, n->first, ti, output, vtable, ftable, out);
+				int result2 = eval(n_tree, n->second, ti, output, vtable, ftable, out);
+				if (n->token_count <= 0) {
+					if (out >= standard) printf("Comparison operation did not have a token specifying its type.\n");
+					return -1;
+				}
+				char* operator = ti->ts[n->token_indices[0]].val;
+				if (out >= verbose) printf("Calculating %d %s %d\n", result1, operator, result2);
+				if 		(strcmp(operator, "==") == 0) return (result1 == result2);
+				else if (strcmp(operator, "!=") == 0) return (result1 != result2);
+				else { if (out >= verbose) printf("No comp operator specified in node.\n"); }
+			}
+		}
 	}
 	return -2;
 }
