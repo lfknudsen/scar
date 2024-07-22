@@ -145,8 +145,6 @@ void connect_token(struct tree* n_tree, int n_index, int t_index, int out) {
     if (out >= verbose) printf("Adding token %d to node %d.\n", t_index, n_index);
 }
 
-// n = elements in token_index's (ti) array of tokens (ts).
-// i = the index of the token in ti->ts that is currently being parsed.
 int check_type(struct token_index *ti, enum e_token expected, int i, int out) {
     if (ti->n <= i) {
         if (out >= standard) printf("Parse error. Code terminates prematurely at %lu:%lu.\n",
@@ -241,7 +239,7 @@ int state_9(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         return -1;
     }
     *i += 1;
- 
+
     if (check_type(ti, t_semicolon, *i, out)) {
         *i += 1;
         int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
@@ -570,7 +568,7 @@ int state_5(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         int operator = add_node(n_tree, n_expr, e_binop, state, output, out);
         add_token(n_tree, *i - 1, operator, out);
         int left_operand = add_node(n_tree, n_expr, specific_expr_type, state, output, out);
-        add_token(n_tree, *i - 2, left_operand, out); 
+        add_token(n_tree, *i - 2, left_operand, out);
         set_first(n_tree, n_index, operator, state, out);
         set_parent(n_tree, left_operand, operator, state, out);
         set_parent(n_tree, operator, n_index, state, out);
@@ -679,7 +677,7 @@ int state_3(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 // Function parameter(s).
 // First check if at the end of the parameter declarations with ") ="
 // Otherwise, check for a parameter declaration with "type id".
-//    If so, add them as tokens, and go to state 
+//    If so, add them as tokens, and go to state
 // ) = -> s4
 // type id -> s3
 // Node index = parameter node
