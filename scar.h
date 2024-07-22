@@ -30,7 +30,11 @@ enum e_token {
 	t_colon,
 	t_semicolon,
 	t_binop,
-	t_comma
+	t_comma,
+	t_exclamation,
+	t_neq,
+	t_double_eq,
+	t_bool
 };
 
 enum e_binop {
@@ -55,7 +59,8 @@ enum e_expr {
 	e_val,
 	e_binop,
 	e_param,
-	e_funcall
+	e_funcall,
+	e_comp
 };
 
 enum e_nodetype {

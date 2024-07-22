@@ -14,6 +14,7 @@
 // BodyStats 	-> Stats ; BodyStats
 // BodyStats 	-> return Exp ;
 // BodyStats	-> return ;
+// BodyStats    -> return Val Comp Val ;
 // Type 		-> int
 // Type 		-> float
 // FunArgs 		-> Type Id, FunArgs
@@ -28,6 +29,8 @@
 // Val			-> id
 // Exp 			-> Exp Binop Exp
 // Exp			-> Val
+// Comp         -> ==
+// Comp         -> !=
 // Binop		-> +
 // Binop		-> -
 // Binop		-> *
@@ -79,6 +82,9 @@ void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
                     return;
                 case e_param:
                     fprintf(output, "Expression: Parameter declaration");
+                    return;
+                case e_comp:
+                    fprintf(output, "Expression: Comparison operation");
                     return;
             }
         case n_prog:

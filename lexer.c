@@ -6,18 +6,18 @@
 
 #include <assert.h>
 
-int init_read_token(struct token_index* ti, unsigned long* token_count, int* sum_sizeof_ts, int line_number,
-		int char_number, int* sum_sizeof_val, char** string, int string_len, enum e_token token_type) {
+int init_token(struct token_index* ti, unsigned long* token_count, int* sum_sizeof_ts, int line_number,
+		int char_number, int* sum_sizeof_val, char* string, enum e_token token_type) {
 	ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (*token_count + 1));
 	*sum_sizeof_ts += sizeof(*ti->ts);
 	ti->ts[*token_count].type = token_type;
 	ti->ts[*token_count].line_number = line_number;
 	ti->ts[*token_count].char_number = char_number;
-	size_t sizeof_val = sizeof(*ti->ts[*token_count].val) * (string_len);
+	size_t sizeof_val = sizeof(*ti->ts[*token_count].val) * (strlen(string));
 	*sum_sizeof_val += sizeof_val;
-	ti->ts[*token_count].val = malloc(sizeof(*ti->ts[*token_count].val) * (string_len));
-	strcpy(ti->ts[*token_count].val, *string);
-	ti->ts[*token_count].val[string_len] = '\0';
+	ti->ts[*token_count].val = malloc(sizeof(*ti->ts[*token_count].val) * (strlen(string)));
+	strcpy(ti->ts[*token_count].val, string);
+	ti->ts[*token_count].val[strlen(string)] = '\0';
 	*token_count ++;
 }
 
@@ -112,7 +112,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 				negative = 1;
 				ti->ts = realloc(ti->ts, (token_count - 1) * sizeof(*ti->ts));
 				token_count --;
-			}	
+			}
 			char *number_string = malloc(sizeof(char) * (2 + negative));
 			int string_len = 1 + negative;
 			if (negative) number_string[0] = '-';
@@ -305,18 +305,40 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			token_count ++;
 		}
 		else if (c == '=') {
-			fprintf(output, "%3lu: TOKEN: EQ\n", token_count);
-			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
-			sum_sizeof_ts += sizeof(*ti->ts);
-			ti->ts[token_count].type = t_eq;
-			ti->ts[token_count].line_number = line_number;
-			ti->ts[token_count].char_number = char_number;
-			size_t sizeof_val = sizeof("=");
-			sum_sizeof_val += sizeof_val;
-			ti->ts[token_count].val = malloc(sizeof_val);
-			strcpy(ti->ts[token_count].val, "=");
-			ti->ts[token_count].val[1] = '\0';
-			token_count ++;
+			if (token_count > 0 && ti->ts[token_count - 1].type == t_exclamation) {
+				fprintf(output, "%3lu: Overwriting previous token with:\n", token_count - 1);
+				fprintf(output, "%3lu: TOKEN: NEQ\n", token_count - 1);
+				ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1 - 1));
+				ti->ts[token_count - 1].type = t_neq;
+				size_t sizeof_val = sizeof("!=");
+				sum_sizeof_val += sizeof_val - sizeof(ti->ts[token_count - 1].val);
+				ti->ts[token_count - 1].val = malloc(sizeof_val);
+				strcpy(ti->ts[token_count - 1].val, "!=");
+				ti->ts[token_count - 1].val[2] = '\0';
+			} else if (token_count > 0 && ti->ts[token_count - 1].type == t_eq) {
+				fprintf(output, "%3lu: Overwriting previous token with:\n", token_count - 1);
+				fprintf(output, "%3lu: TOKEN: DEQ\n", token_count - 1);
+				ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1 - 1));
+				ti->ts[token_count - 1].type = t_double_eq;
+				size_t sizeof_val = sizeof("==");
+				sum_sizeof_val += sizeof_val - sizeof(ti->ts[token_count - 1].val);
+				ti->ts[token_count - 1].val = malloc(sizeof_val);
+				strcpy(ti->ts[token_count - 1].val, "==");
+				ti->ts[token_count - 1].val[2] = '\0';
+			} else {
+				fprintf(output, "%3lu: TOKEN: EQ\n", token_count);
+				ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
+				sum_sizeof_ts += sizeof(*ti->ts);
+				ti->ts[token_count].type = t_eq;
+				ti->ts[token_count].line_number = line_number;
+				ti->ts[token_count].char_number = char_number;
+				size_t sizeof_val = sizeof("=");
+				sum_sizeof_val += sizeof_val;
+				ti->ts[token_count].val = malloc(sizeof_val);
+				strcpy(ti->ts[token_count].val, "=");
+				ti->ts[token_count].val[1] = '\0';
+				token_count ++;
+			}
 		}
 		else if (c == ';') {
 			fprintf(output, "%3lu: TOKEN: SEMICOLON\n", token_count);
@@ -343,6 +365,20 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			sum_sizeof_val += sizeof_val;
 			ti->ts[token_count].val = malloc(sizeof_val);
 			strcpy(ti->ts[token_count].val, ",");
+			ti->ts[token_count].val[1] = '\0';
+			token_count ++;
+		}
+		else if (c == '!') {
+			fprintf(output, "%3lu: TOKEN: EXCLAMATION\n", token_count);
+			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
+			sum_sizeof_ts += sizeof(*ti->ts);
+			ti->ts[token_count].type = t_exclamation;
+			ti->ts[token_count].line_number = line_number;
+			ti->ts[token_count].char_number = char_number;
+			size_t sizeof_val = sizeof("!");
+			sum_sizeof_val += sizeof_val;
+			ti->ts[token_count].val = malloc(sizeof_val);
+			strcpy(ti->ts[token_count].val, "!");
 			ti->ts[token_count].val[1] = '\0';
 			token_count ++;
 		}
