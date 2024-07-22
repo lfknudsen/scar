@@ -4,6 +4,9 @@
 #include <dirent.h>
 #include <string.h>
 
+// alternative:
+// use diff --skip-trailing-cr --suppress-common-lines
+
 struct test_result {
   char* name;
   int correct;
@@ -32,7 +35,7 @@ int main (int argc, char** argv) {
     const char* out_dirname   = "./tests/out/";
     const char* exp_dirname   = "./tests/exp/";
     const char* out_ext       = ".out";
-    const char* exp_ext       = ".exp";
+    const char* exp_ext       = ".out";
     size_t base_exec_len = strlen(base_exec) + strlen(prog_dirname) + strlen(test_option) +
         strlen(out_dirname) + strlen(out_ext);
     size_t base_comp_len = strlen(base_comp) + strlen(out_dirname) + strlen(exp_dirname) +
