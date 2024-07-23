@@ -854,7 +854,7 @@ int state_0(struct token_index* ti, int *i, struct tree* n_tree, int n_index, in
     assert(n_tree->n == 0);
     int top_node_index = add_node(n_tree, n_prog, 0, state, output, out);
 
-    return state_1(ti, i, n_tree, n_index, parent_func, output, out);
+    return state_1(ti, i, n_tree, top_node_index, parent_func, output, out);
 }
 
 struct tree* parse(FILE* f, FILE* output, struct token_index* ti, int out) {

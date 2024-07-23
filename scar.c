@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
             out = verbose;
         }
     }
-    if (out == verbose) {
+    if (out >= verbose) {
         printf("Input:");
         for (int i = 0; i < argc; i++) {
             printf(" %s", argv[i]);
@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
             for (int i = 0; i < node_tree->n; i++) {
                 printf("%3d: ", i);
                 print_node(node_tree, i, out);
-                printf(". Par: %d. Fst: %d. Snd: %d.\n", 
+                printf(". Par: %d. Fst: %d. Snd: %d.\n",
                 node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
                 for (int t = 0; t < node_tree->nodes[i].token_count; t++) {
                     printf("%5d val: %s.\n", t, ti->ts[node_tree->nodes[i].token_indices[t]].val);

@@ -18,7 +18,8 @@ int init_token(struct token_index* ti, unsigned long* token_count, int* sum_size
 	ti->ts[*token_count].val = malloc(sizeof(*ti->ts[*token_count].val) * (strlen(string)));
 	strcpy(ti->ts[*token_count].val, string);
 	ti->ts[*token_count].val[strlen(string)] = '\0';
-	*token_count ++;
+	*token_count += 1;
+	return *token_count;
 }
 
 // Read through the given file, assembling a list of tokens.
@@ -152,7 +153,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 			else {
 				fprintf(output, "%3lu: TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
 			}
-			
+
 			ti->ts = realloc(ti->ts, sizeof(*ti->ts) * (token_count + 1));
 			sum_sizeof_ts += sizeof(*ti->ts);
 			ti->ts[token_count].type = (is_floating_type) ? t_num_float : t_num_int;
@@ -188,7 +189,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti) {
 				enum e_token prev = ti->ts[token_count - 1].type;
 				if (prev != t_num_int && prev != t_num_float && prev != t_id) {
 					char_number ++;
-					c = fgetc(f);	
+					c = fgetc(f);
 				}
 			}*/
 			//else {

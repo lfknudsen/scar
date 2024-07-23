@@ -55,12 +55,12 @@ void vbind(struct vtable_index* vtable, char* id, void* val, unsigned int val_le
 }
 
 // Find value of variable stored in vtable.
-// Result is stored in-place in the 'destination' parameter.
-// Returns 0 on success.
-// Returns unbound_variable_name on failure.
+// The value that matches the variable name is stored in-place in the 'destination' parameter.
+// Returns the vtable index on success (so >= 0).
+// Returns -1 on failure.
 int lookup(struct ivtable_index* vtable, char* id, int* destination, int out) {
 	if (out >= verbose) {
-		printf("Searching vtable.\n");
+		printf("Searching vtable for \"%s\":\n", id);
 	}
 	for (unsigned int i = 0; i < vtable->n; i++) {
 		if (out >= verbose) {
@@ -68,10 +68,11 @@ int lookup(struct ivtable_index* vtable, char* id, int* destination, int out) {
 		}
 		if (strcmp(vtable->vs[i].id, id) == 0) {
 			*destination = vtable->vs[i].val;
-			return 0;
+			return i;
 		}
 	}
-	return 1;
+	if (out >= verbose) printf("Could not find the variable in the vtable.\n");
+	return -1;
 }
 
 // Bind a function definition to the ftable.
@@ -110,6 +111,11 @@ int assemble_ftable(struct tree* n_tree, int n_index, struct token_index* ti,
 		n_tree->nodes[n_index].specific_type == s_fun_bind) {
 		return fbind(ftable, ti->ts[n_tree->nodes[n_index].token_indices[1]].val, n_index, out);
 	}
+	if (out >= standard) {
+		printf("Cannot bind non-function/program node to the ftable:\n%d ", n_index);
+		print_node(n_tree, n_index, out);
+	}
+	return -1;
 }
 
 // TODO: Refactor so that ftable is built during parsing or at least using other function.
@@ -125,6 +131,11 @@ int careful_build_ftable(struct tree* n_tree, struct token_index* ti,
 			fbind(ftable, ti->ts[n_tree->nodes[i].token_indices[1]].val, i, out);
 		}
 	}
+	if (ftable->n == 0) {
+		if (out >= standard) printf("No functions were found in the program.\n");
+		return ftable->n;
+	}
+	return ftable->n;
 }
 
 // Evaluate a single node in the node tree.
@@ -187,10 +198,10 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 			char* seeking = ti->ts[n_tree->nodes[n_index].token_indices[0]].val;
 			if (out >= verbose) printf("Looking for variable named \"%s\" in the vtable.\n",
 				ti->ts[n_tree->nodes[n_index].token_indices[0]].val);
-			int result;
+			int result = -1;
 			lookup(vtable, seeking, &result, out);
 			return result;
-		}	
+		}
 		else if (n_tree->nodes[n_index].specific_type == e_val) {
 			if (n_tree->nodes[n_index].token_count <= 0) {
 				if (out >= verbose) {
