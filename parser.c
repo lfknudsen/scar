@@ -376,9 +376,9 @@ int state_8(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         char* right_symbol = (n_tree->nodes[right_operator].token_count > 0)
             ? ti->ts[n_tree->nodes[right_operator].token_indices[0]].val
             : ti->ts[*i - 1].val;
+        if (out >= verbose) printf("Symbol order of '%s'  '%s'.\n", left_symbol, right_symbol);
         if ((strcmp(left_symbol,"+") == 0 || strcmp(left_symbol,"-") == 0) &&
             (strcmp(right_symbol,"*") == 0 || strcmp(right_symbol,"/") == 0)) {
-                if (out >= verbose) printf("Symbol order of +- _ */\n");
                 set_first(n_tree, right_operator, expression, state, out);
                 set_second(n_tree, n_index, right_operator, state, out);
         }
