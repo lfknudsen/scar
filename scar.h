@@ -60,7 +60,8 @@ enum e_expr {
 	e_binop,
 	e_param,
 	e_funcall,
-	e_comp
+	e_comp,
+	e_argument,
 };
 
 enum e_nodetype {
@@ -74,7 +75,7 @@ struct node {
 	enum e_nodetype nodetype;
 	int specific_type;
 	int token_count;
-	int *token_indices;
+	int* token_indices;
 	int extra_info;
 	int first;
 	int second;
@@ -83,7 +84,7 @@ struct node {
 };
 
 struct tree {
-	struct node *nodes;
+	struct node* nodes;
 	int n;
 };
 
@@ -93,19 +94,20 @@ struct Int {
 
 struct token {
 	enum e_token type;
-	char *val;
+	char* val;
 	unsigned long line_number;
 	unsigned long char_number;
 };
 
 struct token_index {
 	unsigned long n;
-	struct token *ts;
+	struct token* ts;
 };
 
 struct function_binding {
 	char* id;
 	unsigned int node_index;
+	unsigned int param_count;
 };
 
 struct ftable_index {
@@ -138,7 +140,7 @@ struct ivtable_index {
 enum error_codes {
 	no_error,
 	unbound_variable_name,
-	
+
 };
 
 enum out_mode {

@@ -97,6 +97,18 @@ int fbind(struct ftable_index* ftable, char* id, unsigned int node_index, int ou
 	return 0;
 }
 
+// Find the node index of the entry in the ftable which matches the
+// id argument.
+// Returns the node index.
+int lookup_f(struct ftable_index* ftable, char* id, int out) {
+	for (int i = 0; i < ftable->n; i++) {
+		if (strcmp(ftable->fs[i].id,id) == 0) {
+			return ftable->fs[i].node_index;
+		}
+	}
+	return -1;
+}
+
 int assemble_ftable(struct tree* n_tree, int n_index, struct token_index* ti,
 		FILE* output, struct vtable_index* vtable, struct ftable_index* ftable, int out) {
 	if (n_tree->nodes[n_index].nodetype == n_prog) {
@@ -189,7 +201,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 		else if (n_tree->nodes[n_index].specific_type == s_return) {
 			return eval(n_tree, n_tree->nodes[n_index].second, ti, output, vtable, ftable, out);
 		}
-		if (out >= verbose) printf("Missing implementation. Specific type: %d\n", n_tree->nodes[n_index].specific_type);
+		if (out >= verbose) printf("Eval error: Missing implementation. Specific type: %d\n", n_tree->nodes[n_index].specific_type);
 		return -1;
 	}
 	// Variable/Value.
@@ -230,7 +242,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				int result1 = eval(n_tree, n->first, ti, output, vtable, ftable, out);
 				int result2 = eval(n_tree, n->second, ti, output, vtable, ftable, out);
 				if (n->token_count <= 0) {
-					if (out >= standard) printf("Binary operation did not have a token specifying its type.\n");
+					if (out >= standard) printf("Eval error: Binary operation did not have a token specifying its type.\n");
 					return -1;
 				}
 				char* operator = ti->ts[n->token_indices[0]].val;
@@ -239,7 +251,7 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				else if (strcmp(operator, "-") == 0) return (result1 - result2);
 				else if (strcmp(operator, "*") == 0) return (result1 * result2);
 				else if (strcmp(operator, "/") == 0) return (result1 / result2);
-				else { if (out >= verbose) printf("No BINOP operator specified in node.\n"); }
+				else { if (out >= verbose) printf("Eval error: No BINOP operator specified in node.\n"); }
 			}
 			else {
 				if (out >= verbose) printf("Evaluation error: No operator found for binary operation (node %d). The token is not connected.\n", n_index);
@@ -260,15 +272,58 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				int result1 = eval(n_tree, n->first, ti, output, vtable, ftable, out);
 				int result2 = eval(n_tree, n->second, ti, output, vtable, ftable, out);
 				if (n->token_count <= 0) {
-					if (out >= standard) printf("Comparison operation did not have a token specifying its type.\n");
+					if (out >= standard)
+						printf("Eval error: Comparison operation did not have a token specifying its type.\n");
 					return -1;
 				}
 				char* operator = ti->ts[n->token_indices[0]].val;
 				if (out >= verbose) printf("Calculating %d %s %d\n", result1, operator, result2);
 				if 		(strcmp(operator, "==") == 0) return (result1 == result2);
 				else if (strcmp(operator, "!=") == 0) return (result1 != result2);
-				else { if (out >= verbose) printf("No comp operator specified in node.\n"); }
+				else { if (out >= verbose) printf("Eval error: No comp operator specified in node.\n"); }
 			}
+		}
+		else if (n_tree->nodes[n_index].specific_type == e_funcall) {
+			struct node* n = &n_tree->nodes[n_index];
+			if (n->token_count == 0) {
+				if (out >= standard) printf("Eval error: Function call did not have an ID.\n");
+				return -1;
+			}
+			int functionbind_node = lookup_f(ftable, ti->ts[n->token_indices[0]].val, out);
+			if (functionbind_node == -1) {
+				if (out >= standard)
+					printf("Eval error: Could not find a function by the name \"%s\".\n",
+						ti->ts[n->token_indices[0]].val);
+				return -1;
+			}
+			struct node* fb = &n_tree->nodes[functionbind_node];
+			struct ivtable_index* new_vtable = malloc(sizeof(*new_vtable));
+			new_vtable->n = 0;
+			if (fb->first == -1) {
+				if (out >= standard)
+					printf("Eval warning: No parameter node for \"%s\" function.\n",
+						ti->ts[n->token_indices[0]].val);
+			} else {
+				// should be possible to do this non-imperically when/if I change the way evaluation works...
+				int eval_index = n->first;
+				if (eval_index != -1) {
+					for (int i = 1; i < fb->token_count; i++) {
+						int value_to_bind = eval(n_tree, eval_index, ti, output, vtable, ftable, out);
+						ivbind(new_vtable,
+							  ti->ts[n_tree->nodes[fb->first].token_indices[i * 2 - 1]].val,
+							  value_to_bind, out);
+						if (n_tree->nodes[eval_index].second == -1) break;
+						else eval_index = n_tree->nodes[eval_index].second;
+					}
+				}
+			}
+
+			int result = eval(n_tree, functionbind_node, ti, output, new_vtable, ftable, out);
+			free(new_vtable);
+			return result;
+		}
+		else if (n_tree->nodes[n_index].specific_type == e_argument) {
+			return eval(n_tree, n_tree->nodes[n_index].first, ti, output, vtable, ftable, out);
 		}
 	}
 	return -2;

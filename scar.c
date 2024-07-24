@@ -68,6 +68,9 @@ void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
                 case s_fun_body:
                     fprintf(output, "Statement: Function body");
                     return;
+                default:
+                    fprintf(output, "Unknown statement node");
+                    return;
             }
         case n_expr:
             switch (node_tree->nodes[n_index].specific_type) {
@@ -86,11 +89,21 @@ void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
                 case e_comp:
                     fprintf(output, "Expression: Comparison operation");
                     return;
+                case e_argument:
+                    fprintf(output, "Expression: Function-call argument");
+                    return;
+                case e_funcall:
+                    fprintf(output, "Expression: Function call");
+                    return;
+                default:
+                    fprintf(output, "Unknown expression node");
+                    return;
             }
         case n_prog:
             fprintf(output, "Top-level program");
             return;
         default:
+            fprintf(output, "Unknown top-level program node");
             return;
     }
     return;
@@ -188,7 +201,7 @@ int main(int argc, char* argv[]) {
     fclose(write_ptr);
 
     if (ti->n) {
-        if (out >= verbose) {
+        /*if (out >= verbose) {
             for (int i = 0; i < ti->n; i++) {
                 printf("Token #%d: \n", i);
                 for (int c = 0; c < strlen(ti->ts[i].val); c++) {
@@ -197,7 +210,7 @@ int main(int argc, char* argv[]) {
                 printf("\n");
                 printf("%s (%u)\n", ti->ts[i].val, ti->ts[i].type);
             }
-        }
+        }*/
         FILE* token_file = fopen("tokens.out", "r");
         if (token_file == NULL) {
             if (out >= standard) printf("Token file not found.\n");
