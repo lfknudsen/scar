@@ -12,3 +12,6 @@ DFA and minimising it, and so on.
 The casual nature of the project also means I didn't give the language
 too much thought. I don't imagine I'll develop this interpreter beyond turing
 completeness.
+
+Scar is a small, statically-typed language with pass-by-value function calls.
+Program execution starts in the "main" function.
