@@ -16,16 +16,6 @@ extern int state_5(struct token_index* ti, int* i, struct tree* n_tree, int n_in
 extern int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out);
 extern int state_12(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out);
 
-enum state {
-    program_start,
-    function_head,
-    function_param,
-    function_param_followup,
-    function_body_start,
-    function_body_expression,
-    function_body_statement
-};
-
 /*
 s0 -> s1
 s1 -> Type Id ( -> s2
@@ -48,8 +38,10 @@ s8 -> Val ; -> (return the new node back up to fst).
 s8 -> Val BINOP -> s8
 */
 
-void debug_print(int state, unsigned int index, int out) {
-    if (out >= verbose) printf("Current state: %d\nToken index: %u\n", state, index);
+void debug_print(int state, unsigned int t_index, int n_index, int parent, int out) {
+    if (out >= verbose)
+        printf("Current state: %d. Token index: %u. Node index: %d. Parent_func: %d.\n",
+            state, t_index, n_index, parent);
 }
 
 enum e_expr check_value_type(struct token_index* ti, int i, int state, int out) {
@@ -62,7 +54,6 @@ enum e_expr check_value_type(struct token_index* ti, int i, int state, int out) 
         default:
             if (out >= standard) printf("Parse error. Expected a right operand at %lu:%lu.\n",
             ti->ts[i].line_number, ti->ts[i].char_number);
-            debug_print(state, i, out);
             return -1;
     }
 }
@@ -184,7 +175,7 @@ int state_15(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     n_tree->nodes[n_index].specific_type == e_binop);
 
     static const int state = 15;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d. Parent func: %d\n", state, *i, n_index, parent_func);
+    debug_print(state, *i, n_index, parent_func, out);
 
     enum e_expr specific_type = check_value_type(ti, *i, state, out);
     *i += 1;
@@ -233,7 +224,7 @@ int state_15(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     else {
         if (out >= standard) printf("Parse error. Expected a comma, end-parenthesis or binary operator at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
@@ -245,7 +236,7 @@ int state_14(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     n_tree->nodes[n_index].specific_type == e_binop);
 
     static const int state = 14;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d. Parent func: %d\n", state, *i, n_index, parent_func);
+    debug_print(state, *i, n_index, parent_func, out);
 
     enum e_expr specific_type = check_value_type(ti, *i, state, out);
     *i += 1;
@@ -291,7 +282,7 @@ int state_14(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     else {
         if (out >= standard) printf("Parse error. Expected a comma, end-parenthesis, or binary operator at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
@@ -302,7 +293,8 @@ int state_13(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     n_tree->nodes[n_index].specific_type == e_funcall);
 
     static const int state = 13;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d.\n", state, *i, n_index);
+    debug_print(state, *i, n_index, parent_func, out);
+
     if (check_type(ti, t_par_end, *i, out)) {
         *i += 1;
         if (check_type(ti, t_semicolon, *i, out)) *i += 1;
@@ -324,7 +316,7 @@ int state_12(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     n_tree->nodes[n_index].specific_type == e_funcall);
 
     static const int state = 12;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d.\n", state, *i, n_index);
+    debug_print(state, *i, n_index, parent_func, out);
 
     if (check_type(ti, t_par_end, *i, out)) {
         *i += 1;
@@ -362,7 +354,7 @@ int state_12(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 
 int state_11(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 11;
-    if (out >= verbose) printf("State: %d. Token index: %d\n", state, *i);
+    debug_print(state, *i, n_index, parent_func, out);
 
     enum e_expr specific_type = check_value_type(ti, *i, state, out);
     *i += 1;
@@ -384,7 +376,7 @@ int state_11(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     else {
         if (out >= standard) printf("Parse error. Expected a semicolon to finish comparison at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
@@ -399,7 +391,7 @@ int state_11(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 // id/num binop -> s10
 int state_10(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 10;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d. Parent func: %d\n", state, *i, n_index, parent_func);
+    debug_print(state, *i, n_index, parent_func, out);
 
     enum e_expr specific_type = check_value_type(ti, *i, state, out);
     *i += 1;
@@ -451,7 +443,7 @@ int state_10(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     else {
         if (out >= standard) printf("Parse error. Expected a semi-colon, function call, or binary operator at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
@@ -466,7 +458,7 @@ int state_10(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 // id/num binop -> s9
 int state_9(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 9;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d. Parent func: %d\n", state, *i, n_index, parent_func);
+    debug_print(state, *i, n_index, parent_func, out);
 
     enum e_expr specific_type = check_value_type(ti, *i, state, out);
     *i += 1;
@@ -517,7 +509,7 @@ int state_9(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else {
         if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
@@ -532,7 +524,7 @@ int state_9(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 // id/num binop -> s8
 int state_8(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 8;
-    if (out >= verbose) printf("State: %d. Token index: %d\n", state, *i);
+    debug_print(state, *i, n_index, parent_func, out);
 
     enum e_expr specific_type = check_value_type(ti, *i, state, out);
     *i += 1;
@@ -576,7 +568,7 @@ int state_8(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else {
         if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
@@ -593,7 +585,7 @@ int state_8(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 // num(int) binop num(int) binop -> s7
 int state_7(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 7;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d.\n", state, *i, n_index);
+    debug_print(state, *i, n_index, parent_func, out);
 
     enum e_expr specific_type = check_value_type(ti, *i, state, out);
     *i += 1;
@@ -631,7 +623,7 @@ int state_7(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else {
         if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
@@ -646,7 +638,7 @@ int state_7(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 // type id = -> s5 -> ?
 int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 6;
-    if (out >= verbose) printf("State: %d. Token index: %d\n", state, *i);
+    debug_print(state, *i, n_index, parent_func, out);
 
     if (check_type(ti, t_return, *i, out)) {
         if (out >= verbose) printf("state 6 returning.\n");
@@ -682,7 +674,7 @@ int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         else {
             if (out >= standard) printf("Parse error. Expected a semi-colon to end function body at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
-            debug_print(state, *i, out);
+            debug_print(state, *i, n_index, parent_func, out);
             return -1;
         }
     }
@@ -690,14 +682,14 @@ int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else {
         if (out >= standard) printf("Parse error. Expected a variable type at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
     if (check_type(ti, t_id, *i, out)) *i += 1;
     else {
         if (out >= standard) printf("Parse error. Expected a variable name at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
     if (check_type(ti, t_eq, *i, out)) {
@@ -728,7 +720,7 @@ int state_5(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         && n_tree->nodes[n_index].specific_type == s_var_bind);
 
     static const int state = 5;
-    if (out >= verbose) printf("State: %d. Token index: %d\n", state, *i);
+    debug_print(state, *i, n_index, parent_func, out);
 
     int specific_type = check_value_type(ti, *i, state, out);
     *i += 1;
@@ -765,10 +757,11 @@ int state_5(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else {
         if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator to follow variable value \"%s\"(%lu:%lu) at %lu:%lu.\n",
         ti->ts[*i-2].val, ti->ts[*i-2].line_number, ti->ts[*i-2].char_number, ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
+
 // First statement in function body.
 // return ; -> s1
 // return -> s7
@@ -777,7 +770,7 @@ int state_5(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 // fun_parent = function binding
 int state_4(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 4;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d.\n", state, *i, n_index);
+    debug_print(state, *i, n_index, parent_func, out);
 
     if (check_type(ti, t_return, *i, out)) {
         *i += 1;
@@ -786,7 +779,7 @@ int state_4(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
         if (check_type(ti, t_semicolon, *i, out)) {
             if (out == standard) printf("Warning: Empty function body at %lu:%lu.\n", ti->ts[*i].line_number, ti->ts[*i].char_number);
-            debug_print(state, *i, out);
+            debug_print(state, *i, n_index, parent_func, out);
             *i += 1;
             return state_1(ti, i, n_tree, return_node_index, n_tree->nodes[n_index].parent, output, out);
         }
@@ -799,21 +792,21 @@ int state_4(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else {
         if (out >= standard) printf("Parse error. Expected a type to begin variable declaration at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
     if (check_type(ti, t_id, *i, out)) *i += 1;
     else {
         if (out >= standard) printf("Parse error. Expected a variable name at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
     if (check_type(ti, t_eq, *i, out)) *i += 1;
     else {
         if (out >= standard) printf("Parse error. Expected an equals symbol for variable declaration at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
     int new_node_index = add_node(n_tree, n_stat, s_var_bind, state, output, out);
@@ -831,7 +824,8 @@ int state_4(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 // fun_parent = function binding.
 int state_3(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 3;
-    if (out >= verbose) printf("State: %d. Token index: %d\n", state, *i);
+    debug_print(state, *i, n_index, parent_func, out);
+
     if (check_type(ti, t_comma, *i, out)) {
         *i += 1;
         return state_2(ti, i, n_tree, n_index, parent_func, output, out);
@@ -840,14 +834,14 @@ int state_3(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else {
         if (out >= standard) printf("Parse error. Expected ')' to proceed function parameters at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
     if (check_type(ti, t_eq, *i, out)) *i += 1;
     else {
         if (out >= standard) printf("Parse error. Expected '=' to indicate start of function body at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 
@@ -864,7 +858,8 @@ int state_3(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 // fun_parent = function binding
 int state_2(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 2;
-    if (out >= verbose) printf("State: %d. Token index: %d. Node index: %d.\n", state, *i, n_index);
+    debug_print(state, *i, n_index, parent_func, out);
+
     if (check_type(ti, t_par_end, *i, out)) {
         *i += 1;
         if (check_type(ti, t_eq, *i, out)) {
@@ -874,7 +869,7 @@ int state_2(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         else {
             if (out >= standard) printf("Parse error. Expected '=' to precede function body at %lu:%lu.\n",
                 ti->ts[*i].line_number, ti->ts[*i].char_number);
-                debug_print(state, *i, out);
+                debug_print(state, *i, n_index, parent_func, out);
                 return -1;
         }
     }
@@ -882,14 +877,14 @@ int state_2(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else {
         if (out >= standard) printf("Parse error. Expected parameter type at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
     if (check_type(ti, t_id, *i, out)) *i += 1;
     else {
         if (out >= standard) printf("Parse error. Expected parameter name at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 
@@ -897,6 +892,7 @@ int state_2(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     add_token(n_tree, *i - 1, n_index, out);
     return state_3(ti, i, n_tree, n_index, parent_func, output, out);
 }
+
 // Expecting a function declaration. State checks type, ID, and beginning parentheses to contain parameters.
 // If these are correct, add a program node (n_prog), then a function bind statement node (n_stat + s_fun_bind),
 // and finally a parameter expression node. The parameter node will be evaluated first, then the function bind
@@ -906,13 +902,14 @@ int state_2(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 // fun_parent = top node of entire program?
 int state_1(struct token_index* ti, int *i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 1;
-    if (out >= verbose) printf("State: %d. Token index: %d\n", state, *i);
+    debug_print(state, *i, n_index, parent_func, out);
+
     if (ti->n <= *i) return END_STATE;
     // Program must consist of only functions at its highest level, and must have at least one function.
     if (!check_type(ti, t_type, *i, out)) {
         if (out >= standard) printf("Parse error. Expected function type at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 
@@ -920,7 +917,7 @@ int state_1(struct token_index* ti, int *i, struct tree* n_tree, int n_index, in
     if (!check_type(ti, t_id, *i, out)) {
         if (out >= standard) printf("Parse error. Expected function name at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 
@@ -928,7 +925,7 @@ int state_1(struct token_index* ti, int *i, struct tree* n_tree, int n_index, in
     if (!check_type(ti, t_par_beg, *i, out)) {
         if (out >= standard) printf("Parse error. Expected '(' to precede function parameters at %lu:%lu.\n",
         ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, out);
+        debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
     *i += 1;
@@ -948,7 +945,8 @@ int state_1(struct token_index* ti, int *i, struct tree* n_tree, int n_index, in
 
 int state_0(struct token_index* ti, int *i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
     static const int state = 0;
-    if (out >= verbose) printf("State: %d. Token index: %d\n", state, *i);
+    debug_print(state, *i, n_index, parent_func, out);
+
     assert(n_tree->n == 0);
     int top_node_index = add_node(n_tree, n_prog, 0, state, output, out);
 
