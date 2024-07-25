@@ -141,17 +141,8 @@ int add_node(struct tree* node_tree, int node_type, int specific_type, int state
     return node_tree->n - 1;
 }
 
-void add_token(struct tree* node_tree, int t_index, int n_index, int out) {
+void add_token(struct tree* node_tree, int n_index, int t_index, int out) {
     struct node* n = &node_tree->nodes[n_index];
-    n->token_count += 1;
-    n->token_indices =
-        realloc(n->token_indices, sizeof(*n->token_indices) * n->token_count);
-    n->token_indices[n->token_count - 1] = t_index;
-    if (out >= verbose) printf("Adding token %d to node %d.\n", t_index, n_index);
-}
-
-void connect_token(struct tree* n_tree, int n_index, int t_index, int out) {
-    struct node* n = &n_tree->nodes[n_index];
     n->token_count += 1;
     n->token_indices =
         realloc(n->token_indices, sizeof(*n->token_indices) * n->token_count);
@@ -182,7 +173,7 @@ int state_15(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_second(n_tree, n_index, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -198,7 +189,7 @@ int state_15(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
         int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
-        add_token(n_tree, *i - 1, right_operator, out);
+        add_token(n_tree, right_operator, *i - 1, out);
         char* left_symbol = (n_tree->nodes[n_index].token_count > 0)
             ? ti->ts[n_tree->nodes[n_index].token_indices[0]].val
             : "";
@@ -243,7 +234,7 @@ int state_14(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_second(n_tree, n_index, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -259,7 +250,7 @@ int state_14(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
         int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
-        add_token(n_tree, *i - 1, right_operator, out);
+        add_token(n_tree, right_operator, *i - 1, out);
         char* left_symbol = (n_tree->nodes[n_index].token_count > 0)
             ? ti->ts[n_tree->nodes[n_index].token_indices[0]].val
             : "";
@@ -329,7 +320,7 @@ int state_12(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_first(n_tree, n_index, argument, state, out);
     set_first(n_tree, argument, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -341,7 +332,7 @@ int state_12(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
         *i += 1;
 
         int operator = add_node(n_tree, n_expr, e_binop, state, output, out);
-        add_token(n_tree, *i - 1, operator, out);
+        add_token(n_tree, operator, *i - 1, out);
         set_first(n_tree, argument, operator, state, out);
         set_first(n_tree, operator, expression, state, out);
 
@@ -361,7 +352,7 @@ int state_11(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_second(n_tree, n_index, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -398,7 +389,7 @@ int state_10(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_second(n_tree, n_index, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -418,7 +409,7 @@ int state_10(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
         int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
-        add_token(n_tree, *i - 1, right_operator, out);
+        add_token(n_tree, right_operator, *i - 1, out);
         char* left_symbol = (n_tree->nodes[n_index].token_count > 0)
             ? ti->ts[n_tree->nodes[n_index].token_indices[0]].val
             : "";
@@ -465,7 +456,7 @@ int state_9(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_second(n_tree, n_index, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -486,7 +477,7 @@ int state_9(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
         int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
-        add_token(n_tree, *i - 1, right_operator, out);
+        add_token(n_tree, right_operator, *i - 1, out);
         char* left_symbol = (n_tree->nodes[n_index].token_count > 0)
             ? ti->ts[n_tree->nodes[n_index].token_indices[0]].val
             : "";
@@ -531,7 +522,7 @@ int state_8(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_second(n_tree, n_index, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -546,7 +537,7 @@ int state_8(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
         int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
-        add_token(n_tree, *i - 1, right_operator, out);
+        add_token(n_tree, right_operator, *i - 1, out);
         char* left_symbol = (n_tree->nodes[n_index].token_count > 0)
             ? ti->ts[n_tree->nodes[n_index].token_indices[0]].val
             : ti->ts[*i - 3].val;
@@ -592,7 +583,7 @@ int state_7(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_second(n_tree, n_index, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -609,13 +600,13 @@ int state_7(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         int operator = add_node(n_tree, n_expr, e_binop, state, output, out);
         set_first(n_tree, operator, expression, state, out);
         set_second(n_tree, n_index, operator, state, out);
-        add_token(n_tree, *i - 1, operator, out);
+        add_token(n_tree, operator, *i - 1, out);
         return state_8(ti, i, n_tree, operator, parent_func, output, out);
     }
     else if (check_type(ti, t_neq, *i, out) || check_type(ti, t_double_eq, *i, out)) {
         *i += 1;
         int comparison = add_node(n_tree, n_expr, e_comp, state, output, out);
-        add_token(n_tree, *i - 1, comparison, out);
+        add_token(n_tree, comparison, *i - 1, out);
         set_first(n_tree, comparison, expression, state, out);
         set_second(n_tree, n_index, comparison, state, out);
         return state_11(ti, i, n_tree, comparison, parent_func, output, out);
@@ -651,7 +642,7 @@ int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
         int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
         set_second(n_tree, return_node_index, expression, state, out);
-        add_token(n_tree, *i - 1, expression, out);
+        add_token(n_tree, expression, *i - 1, out);
 
         if (specific_type == e_funcall) {
             *i += 1;
@@ -666,7 +657,7 @@ int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         else if (check_type(ti, t_binop, *i, out)) {
             *i += 1;
             int operator = add_node(n_tree, n_expr, e_binop, state, output, out);
-            add_token(n_tree, *i - 1, operator, out);
+            add_token(n_tree, operator, *i - 1, out);
             set_first(n_tree, operator, expression, state, out);
             set_second(n_tree, return_node_index, operator, state, out);
             return state_8(ti, i, n_tree, operator, parent_func, output, out);
@@ -696,8 +687,8 @@ int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         *i += 1;
         int new_node_index = add_node(n_tree, n_stat, s_var_bind, state, output, out);
         set_second(n_tree, n_index, new_node_index, state, out);
-        add_token(n_tree, *i - 3, new_node_index, out);
-        add_token(n_tree, *i - 2, new_node_index, out);
+        add_token(n_tree, new_node_index, *i - 3, out);
+        add_token(n_tree, new_node_index, *i - 2, out);
 
         return state_5(ti, i, n_tree, new_node_index, parent_func, output, out);
     }
@@ -727,7 +718,7 @@ int state_5(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
     set_first(n_tree, n_index, expression, state, out);
-    add_token(n_tree, *i - 1, expression, out);
+    add_token(n_tree, expression, *i - 1, out);
 
     if (specific_type == e_funcall) {
         *i += 1;
@@ -745,7 +736,7 @@ int state_5(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         if (out >= verbose) printf("First BINOP found after variable bind start.\n");
         *i += 1;
         int operator = add_node(n_tree, n_expr, e_binop, state, output, out);
-        add_token(n_tree, *i - 1, operator, out);
+        add_token(n_tree, operator, *i - 1, out);
         set_first(n_tree, n_index, operator, state, out);
         set_first(n_tree, operator, expression, state, out);
 
@@ -811,8 +802,8 @@ int state_4(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
     }
     int new_node_index = add_node(n_tree, n_stat, s_var_bind, state, output, out);
     set_second(n_tree, n_index, new_node_index, state, out);
-    add_token(n_tree, *i - 3, new_node_index, out);
-    add_token(n_tree, *i - 2, new_node_index, out);
+    add_token(n_tree, new_node_index, *i - 3, out);
+    add_token(n_tree, new_node_index, *i - 2, out);
 
     return state_5(ti, i, n_tree, new_node_index, n_index, output, out);
 }
@@ -888,8 +879,8 @@ int state_2(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         return -1;
     }
 
-    add_token(n_tree, *i - 2, n_index, out);
-    add_token(n_tree, *i - 1, n_index, out);
+    add_token(n_tree, n_index, *i - 2, out);
+    add_token(n_tree, n_index, *i - 1, out);
     return state_3(ti, i, n_tree, n_index, parent_func, output, out);
 }
 
@@ -933,8 +924,8 @@ int state_1(struct token_index* ti, int *i, struct tree* n_tree, int n_index, in
     int top_node_index = add_node(n_tree, n_prog, 0, state, output, out);
     set_second(n_tree, parent_func, top_node_index, state, out);
     int fun_declaration = add_node(n_tree, n_stat, s_fun_bind, state, output, out);
-    add_token(n_tree, *i - 3, fun_declaration, out);
-    add_token(n_tree, *i - 2, fun_declaration, out);
+    add_token(n_tree, fun_declaration, *i - 3, out);
+    add_token(n_tree, fun_declaration, *i - 2, out);
     if (out >= verbose) printf("Added new function: %s %s\n", ti->ts[*i-3].val, ti->ts[*i-2].val);
     set_first(n_tree, top_node_index, fun_declaration, state, out);
     int new_param_node_index = add_node(n_tree, n_expr, e_param, state, output, out);
