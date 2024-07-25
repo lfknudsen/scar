@@ -195,7 +195,7 @@ int main(int argc, char* argv[]) {
     struct token_index *ti = malloc(sizeof(*ti));
     ti->ts = malloc(sizeof(*ti->ts));
     ti->n = 0;
-    ti->n = lex(read_ptr, write_ptr, ti);
+    ti->n = lex(read_ptr, write_ptr, ti, out);
     if (out >= verbose) printf("Read %lu tokens.\n", ti->n);
     fclose(read_ptr);
     fclose(write_ptr);

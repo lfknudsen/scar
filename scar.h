@@ -31,10 +31,17 @@ enum e_token {
 	t_semicolon,
 	t_binop,
 	t_comma,
-	t_exclamation,
+	t_not,
 	t_neq,
 	t_double_eq,
-	t_bool
+	t_bool,
+	t_if,
+	t_else,
+	t_continue,
+	t_greater_than,
+	t_less_than,
+	t_geq,
+	t_leq,
 };
 
 enum e_binop {
