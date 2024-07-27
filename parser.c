@@ -5,16 +5,12 @@
 
 #include "parser.h"
 
-#define NODE node_tree->nodes[node_index]
-#define NODES node_tree->nodes
-#define TREE node_tree
-#define NODE_COUNT node_tree->n
-
 extern int state_1(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out);
 extern int state_2(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out);
 extern int state_5(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out);
 extern int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out);
 extern int state_12(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out);
+extern int state_16(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out);
 
 /*
 s0 -> s1
@@ -185,27 +181,40 @@ int next_expression(struct token_index* ti, int* i, struct tree* n_tree, int n_i
 // the right symbol (and therefore left node should be child of right node).
 // Returns 0 if the two have the same precedence.
 // Returns a negative number otherwise.
+// TODO: Get rid of extraenous stuff here.
 int check_precedence(char* left, char* right) {
     int left_prec = 0;
     int right_prec = 0;
 
-    if (strcmp(left,"*") == 0 || strcmp(left,"/") == 0)
-        left_prec = 3;
+    if (strcmp(left,"**") == 0)
+        left_prec = 5;
+    else if (strcmp(left,"*") == 0 || strcmp(left,"/") == 0)
+        left_prec = 4;
     else if (strcmp(left,"+") == 0 || strcmp(left,"-") == 0)
-        left_prec = 2;
+        left_prec = 3;
     else if (strcmp(left,"==") == 0 || strcmp(left,"!=") == 0 ||
              strcmp(left,">=") == 0 || strcmp(left,"<=") == 0 ||
              strcmp(left, ">") == 0 || strcmp(left, "<") == 0 )
+        left_prec = 2;
+    else if (strcmp(left,"||") == 0)
         left_prec = 1;
+    else if (strcmp(left,"&&") == 0)
+        left_prec = 0;
 
-    if (strcmp(right,"*") == 0 || strcmp(right,"/") == 0)
-        right_prec = 3;
+    if (strcmp(right,"**") == 0)
+        right_prec = 5;
+    else if (strcmp(right,"*") == 0 || strcmp(right,"/") == 0)
+        right_prec = 4;
     else if (strcmp(right,"+") == 0 || strcmp(right,"-") == 0)
-        right_prec = 2;
+        right_prec = 3;
     else if (strcmp(right,"==") == 0 || strcmp(right,"!=") == 0 ||
              strcmp(right,">=") == 0 || strcmp(right,"<=") == 0 ||
              strcmp(right, ">") == 0 || strcmp(right, "<") == 0 )
+        right_prec = 2;
+    else if (strcmp(right,"||") == 0)
         right_prec = 1;
+    else if (strcmp(right,"&&") == 0)
+        right_prec = 0;
 
     return left_prec - right_prec;
 }
@@ -239,9 +248,28 @@ struct tuple binop(struct token_index* ti, int* i, struct tree* n_tree, int n_in
     }
 }
 
-int state_20(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
+int state_21(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
+    static const int state = 21;
+    debug_print(state, *i, n_index, parent_func, out);
+
     printf("Not implemented yet.\n");
     return -1;
+}
+// else
+// can be followed by another if statement, or a continue (into state 6), or anything else.
+// when inside the else branch, it doesn't come back up and continue to state 6 until it hits
+// a continue! Could make do with only an if and an anything else branch from this state?
+int state_20(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
+    static const int state = 20;
+    debug_print(state, *i, n_index, parent_func, out);
+
+    if (check_type(ti, t_if, *i, out)) {
+        *i += 1;
+        return state_16(ti, i, n_tree, n_index, parent_func, output, out);
+    }
+    int result = state_21(ti, i, n_tree, n_index, parent_func, output, out);
+    if (result == -1) return -1;
+    return state_6(ti, i, n_tree, n_index, parent_func, output, out);
 }
 
 // ONLY difference between state 18 and 19 is whether to also check binop precedence compared to the "parent" node.

@@ -251,6 +251,19 @@ int eval(struct tree* n_tree, int n_index, struct token_index *ti, FILE* output,
 				else if (strcmp(operator, "-") == 0) return (result1 - result2);
 				else if (strcmp(operator, "*") == 0) return (result1 * result2);
 				else if (strcmp(operator, "/") == 0) return (result1 / result2);
+				else if (strcmp(operator, "==") == 0) return (result1 == result2);
+				else if (strcmp(operator, "!=") == 0) return (result1 != result2);
+				else if (strcmp(operator, ">=") == 0) return (result1 >= result2);
+				else if (strcmp(operator, "<=") == 0) return (result1 <= result2);
+				else if (strcmp(operator, ">") == 0) return (result1 > result2);
+				else if (strcmp(operator, "<") == 0) return (result1 < result2);
+				else if (strcmp(operator, "**") == 0) {
+					if (result2 == 0) return 1;
+					int result = result1;
+					for (int i = 1; i < result2; i++)
+						result *= result1;
+					return result;
+				}
 				else { if (out >= verbose) printf("Eval error: No BINOP operator specified in node.\n"); }
 			}
 			else {

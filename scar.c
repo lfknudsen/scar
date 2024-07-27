@@ -143,7 +143,7 @@ void free_ivtable(struct ivtable_index* vt) {
 int fail_input() {
     printf("Scar Compiler usage:\n./scar [option] <filename>\n");
     printf("Options:\n  -v    Print in-depth log information.\n");
-    printf("  -q    Hide all print output, including errors, excluding result.\n");
+    printf("  -q    Hide all errors/warnings that would be printed. Result is still printed.\n");
     return 1;
 }
 
@@ -173,7 +173,6 @@ int main(int argc, char* argv[]) {
     else if (argc >= 3) filename = argv[2];
     FILE* read_ptr = fopen(filename, "r");
     if (read_ptr == NULL) {
-        //printf("About to retry.\n");
         char* retry_dir = malloc(strlen(program_dir) + strlen(filename));
         sprintf(retry_dir, "%s%s", program_dir, filename);
         read_ptr = fopen(retry_dir, "r");
