@@ -134,6 +134,7 @@ int add_node(struct tree* node_tree, int node_type, int specific_type, int state
         printf("Adding new node %d: ", node_tree->n - 1);
         print_node(node_tree, node_tree->n - 1, out);
         printf("\n");
+
     }
     fprintf(output, "Created new node in state %d:\n", state);
     fprint_node(node_tree, node_tree->n - 1, output, out);
@@ -151,6 +152,13 @@ void add_token(struct tree* node_tree, int n_index, int t_index, int out) {
     if (out >= verbose) printf("Adding token %d to node %d.\n", t_index, n_index);
 }
 
+/// @brief Check whether the token's type matches the one given.
+/// @param ti The struct containing the list of tokens.
+/// @param expected The type to be checked against.
+/// @param i The index of the token to be checked.
+/// @param out Output mode.
+/// @return Returns 1 if they're identical. Returns 0 otherwise, or if the index
+/// of the token to be checked doesn't match a token at all.
 int check_type(struct token_index *ti, enum e_token expected, int i, int out) {
     if (ti->n <= i) {
         if (out >= standard) printf("Parse error. Code terminates prematurely at %lu:%lu.\n",
@@ -181,7 +189,8 @@ int next_expression(struct token_index* ti, int* i, struct tree* n_tree, int n_i
 // the right symbol (and therefore left node should be child of right node).
 // Returns 0 if the two have the same precedence.
 // Returns a negative number otherwise.
-// TODO: Get rid of extraenous stuff here.
+// TODO: Refactor so that conditional operators are separated from
+// mathematic binary operators.
 int check_precedence(char* left, char* right) {
     int left_prec = 0;
     int right_prec = 0;
@@ -248,12 +257,139 @@ struct tuple binop(struct token_index* ti, int* i, struct tree* n_tree, int n_in
     }
 }
 
+// Continued right side of the comparison operator.
+int state_23(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
+    assert(n_tree->nodes[n_index].nodetype == n_expr &&
+           n_tree->nodes[n_index].specific_type == e_binop);
+    assert(n_tree->nodes[parent_func].nodetype == n_expr &&
+           n_tree->nodes[parent_func].specific_type == e_binop);
+
+    static const int state = 23;
+    debug_print(state, *i, n_index, parent_func, out);
+
+    int expression = next_expression(ti, i, n_tree, n_index, parent_func, output, out, state);
+
+    if (check_type(ti, t_par_end, *i, out)) {
+        *i += 1;
+        return parent_func;
+    }
+
+    else if (check_type(ti, t_binop, *i, out)) {
+        *i += 1;
+        int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
+        add_token(n_tree, right_operator, *i - 1, out);
+        char* left_symbol = (n_tree->nodes[n_index].token_count > 0)
+            ? ti->ts[n_tree->nodes[n_index].token_indices[0]].val
+            : "";
+        char* right_symbol = (n_tree->nodes[right_operator].token_count > 0)
+            ? ti->ts[n_tree->nodes[right_operator].token_indices[0]].val
+            : "";
+        char* parent_symbol = ti->ts[n_tree->nodes[parent_func].token_indices[0]].val;
+        if (out >= verbose) printf("Symbol order of '%s'  '%s'.\n", left_symbol, right_symbol);
+        if (check_precedence(left_symbol, right_symbol) < 0 ||
+            check_precedence(parent_symbol, right_symbol) < 0) {
+            set_first(n_tree, right_operator, expression, state, out);
+            set_second(n_tree, n_index, right_operator, state, out);
+            return state_23(ti, i, n_tree, right_operator, parent_func, output, out);
+        }
+        else {
+            if (n_tree->nodes[n_tree->nodes[parent_func].parent].specific_type == e_comp)
+                set_second(n_tree, n_tree->nodes[parent_func].parent, right_operator, state, out);
+            else
+                set_first(n_tree, n_tree->nodes[parent_func].parent, right_operator, state, out);
+            set_first(n_tree, right_operator, parent_func, state, out);
+            return state_23(ti, i, n_tree, right_operator, right_operator, output, out);
+        }
+    }
+    else {
+        if (out >= standard) printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
+            ti->ts[*i].line_number, ti->ts[*i].char_number);
+        debug_print(state, *i, n_index, parent_func, out);
+        return -1;
+    }
+}
+
+// Second state for parsing right side of the comparison operator.
+int state_22(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
+    assert(n_tree->nodes[n_index].nodetype == n_expr &&
+           n_tree->nodes[n_index].specific_type == e_binop);
+    assert(n_tree->nodes[parent_func].nodetype == n_expr &&
+           n_tree->nodes[parent_func].specific_type == e_comp);
+    assert(n_tree->nodes[parent_func].second == n_index);
+
+    static const int state = 22;
+    debug_print(state, *i, n_index, parent_func, out);
+
+    int expression = next_expression(ti, i, n_tree, n_index, parent_func, output, out, state);
+
+    if (check_type(ti, t_par_end, *i, out)) {
+        *i += 1;
+        return parent_func;
+    }
+    else if (check_type(ti, t_binop, *i, out)) {
+        *i += 1;
+        int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
+        add_token(n_tree, right_operator, *i - 1, out);
+        char* left_symbol = (n_tree->nodes[n_index].token_count > 0)
+            ? ti->ts[n_tree->nodes[n_index].token_indices[0]].val
+            : "";
+        char* right_symbol = (n_tree->nodes[right_operator].token_count > 0)
+            ? ti->ts[n_tree->nodes[right_operator].token_indices[0]].val
+            : "";
+        if (out >= verbose) printf("Symbol order of '%s'  '%s'.\n", left_symbol, right_symbol);
+        if (check_precedence(left_symbol, right_symbol) < 0) {
+            set_first(n_tree, right_operator, expression, state, out);
+            set_second(n_tree, n_index, right_operator, state, out);
+            return state_23(ti, i, n_tree, right_operator, n_index, output, out);
+        }
+        else {
+            set_second(n_tree, parent_func, right_operator, state, out);
+            set_first(n_tree, right_operator, n_index, state, out);
+            return state_23(ti, i, n_tree, right_operator, right_operator, output, out);
+        }
+    }
+    else {
+        if (out >= standard) printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
+            ti->ts[*i].line_number, ti->ts[*i].char_number);
+        debug_print(state, *i, n_index, parent_func, out);
+        return -1;
+    }
+}
+
+// First state for parsing right side of comparison operator.
+// Therefore only ends upon par_end, and cannot accept another comparison operator.
 int state_21(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
+    assert(n_tree->nodes[n_index].nodetype == n_expr &&
+           n_tree->nodes[n_index].specific_type == e_comp);
+    assert(n_tree->nodes[parent_func].nodetype == n_expr &&
+           n_tree->nodes[parent_func].specific_type == e_comp);
+    assert(n_tree->nodes[n_tree->nodes[n_index].parent].nodetype == n_expr &&
+           n_tree->nodes[n_tree->nodes[n_index].parent].specific_type == e_condition);
+    assert(parent_func == n_index);
+
     static const int state = 21;
     debug_print(state, *i, n_index, parent_func, out);
 
-    printf("Not implemented yet.\n");
-    return -1;
+    int expression = next_expression(ti, i, n_tree, n_index, parent_func, output, out, state);
+
+    if (check_type(ti, t_par_end, *i, out)) {
+        *i += 1;
+        return parent_func;
+    }
+    else if (check_type(ti, t_binop, *i, out)) {
+        *i += 1;
+        int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
+        add_token(n_tree, right_operator, *i - 1, out);
+        set_first(n_tree, right_operator, expression, state, out);
+        set_second(n_tree, n_index, right_operator, state, out);
+        return state_22(ti, i, n_tree, right_operator, n_index, output, out);
+    }
+    else {
+        if (out >= standard) printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
+            ti->ts[*i].line_number, ti->ts[*i].char_number);
+        debug_print(state, *i, n_index, parent_func, out);
+        return -1;
+    }
 }
 // else
 // can be followed by another if statement, or a continue (into state 6), or anything else.
@@ -263,18 +399,43 @@ int state_20(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     static const int state = 20;
     debug_print(state, *i, n_index, parent_func, out);
 
+    if (check_type(ti, t_else, *i, out)) {
+        *i += 1;
+        if (out >= verbose)
+            printf("Found an else-token!");
+    }
     if (check_type(ti, t_if, *i, out)) {
         *i += 1;
-        return state_16(ti, i, n_tree, n_index, parent_func, output, out);
+        int if_node = add_node(n_tree, n_stat, s_if, state, output, out);
+        add_token(n_tree, if_node, *i - 1, out);
+        set_second(n_tree, n_index, if_node, state, out);
+
+        return state_16(ti, i, n_tree, if_node, parent_func, output, out);
     }
-    int result = state_21(ti, i, n_tree, n_index, parent_func, output, out);
-    if (result == -1) return -1;
+    if (check_type(ti, t_continue, *i, out)) {
+        *i += 1;
+        return state_6(ti, i, n_tree, n_index, parent_func, output, out);
+    }
     return state_6(ti, i, n_tree, n_index, parent_func, output, out);
+    if (out >= standard) {
+        printf("Parse error. Expected a continuation of an if-statement at %lu:%lu.\n",
+            ti->ts[n_tree->nodes[n_index].token_indices[0]].line_number,
+            ti->ts[n_tree->nodes[n_index].token_indices[0]].char_number);
+    }
+    return -1;
 }
 
+// Still left side of comparison operator.
 // ONLY difference between state 18 and 19 is whether to also check binop precedence compared to the "parent" node.
 // ONLY difference between 18/19 and 9/10 is whether to stop on semicolon or par_end.
 int state_19(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
+    assert(n_tree->nodes[n_index].nodetype == n_expr &&
+        n_tree->nodes[n_index].specific_type == e_binop);
+    assert(n_tree->nodes[parent_func].nodetype == n_expr &&
+        n_tree->nodes[parent_func].specific_type == e_binop);
+    assert(n_tree->nodes[n_tree->nodes[parent_func].parent].nodetype == n_expr &&
+        n_tree->nodes[n_tree->nodes[parent_func].parent].specific_type == e_condition);
+
     static const int state = 19;
     debug_print(state, *i, n_index, parent_func, out);
 
@@ -284,11 +445,7 @@ int state_19(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
         *i += 1;
         return parent_func;
     }
-    // Parsing the second binary operator in "x (+) y (+) z".
-    // node_index is the first binary operator.
-    // node_index.first = x
-    // node_index.second = not initialised yet
-    // node_index.parent is unknown.
+
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
         int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
@@ -313,23 +470,34 @@ int state_19(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
             return state_19(ti, i, n_tree, right_operator, right_operator, output, out);
         }
     }
+    else if (check_type(ti, t_comp, *i, out)) {
+        *i += 1;
+        int comp_operator = add_node(n_tree, n_expr, e_comp, state, output, out);
+        add_token(n_tree, comp_operator, *i - 1, out);
+        int condition_index = n_tree->nodes[parent_func].parent;
+        set_first(n_tree, comp_operator, parent_func, state, out);
+        set_first(n_tree, condition_index, comp_operator, state, out);
+        int result = state_21(ti, i, n_tree, comp_operator, comp_operator, output, out);
+        if (result == -1)
+            return -1;
+        return parent_func;
+    }
     else {
-        if (out >= standard) printf("Parse error. Expected a semi-colon, function call, or binary operator at %lu:%lu.\n",
+        if (out >= standard) printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
         debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
 
-// Parsing "y" in expression "x (+) y"
-// node_index is "x (+)"
-// node_index.first = x
-// node_index.parent = unknown
-// y is unknown and could be another binop expression.
-// y is currently pointed to by *i.
-// id/num ; -> return 6
-// id/num binop -> s9
+// Left side of a comparison operator.
 int state_18(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
+    assert(n_tree->nodes[n_index].nodetype == n_expr &&
+        n_tree->nodes[n_index].specific_type == e_binop);
+    assert(n_tree->nodes[parent_func].nodetype == n_expr &&
+        n_tree->nodes[parent_func].specific_type == e_condition);
+    assert(n_tree->nodes[parent_func].first == n_index);
+
     static const int state = 18;
     debug_print(state, *i, n_index, parent_func, out);
 
@@ -339,11 +507,6 @@ int state_18(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
         *i += 1;
         return parent_func;
     }
-    // Parsing the second binary operator in "x (+) y (+) z".
-    // node_index is the first binary operator.
-    // node_index.first = x
-    // node_index.second = not initialised yet
-    // node_index.parent is unknown.
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
         int right_operator = add_node(n_tree, n_expr, e_binop, state, output, out);
@@ -366,22 +529,33 @@ int state_18(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
             return state_19(ti, i, n_tree, right_operator, right_operator, output, out);
         }
     }
+    else if (check_type(ti, t_comp, *i, out)) {
+        *i += 1;
+        int comp_operator = add_node(n_tree, n_expr, e_comp, state, output, out);
+        add_token(n_tree, comp_operator, *i - 1, out);
+        set_first(n_tree, comp_operator, n_index, state, out);
+        set_first(n_tree, parent_func, comp_operator, state, out);
+        return state_21(ti, i, n_tree, comp_operator, comp_operator, output, out);
+    }
     else {
-        if (out >= standard) printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
+        if (out >= standard) printf("Parse error. Expected an end-parenthesis, comparison, or binary operator at %lu:%lu.\n",
             ti->ts[*i].line_number, ti->ts[*i].char_number);
         debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
 }
 
+// First state to parse left side of comparison operator in if-statement condition.
 int state_17(struct token_index* ti, int* i, struct tree* n_tree, int n_index, int parent_func, FILE* output, int out) {
-    assert(n_tree->nodes[n_index].nodetype == n_stat &&
-    n_tree->nodes[n_index].specific_type == s_if);
+    assert(n_tree->nodes[n_index].nodetype == n_expr &&
+    n_tree->nodes[n_index].specific_type == e_condition);
 
     static const int state = 17;
     debug_print(state, *i, n_index, parent_func, out);
 
     enum e_expr specific_type = check_value_type(ti, *i, state, out);
+    if (specific_type == -1)
+        return -1;
     *i += 1;
 
     int expression = add_node(n_tree, n_expr, specific_type, state, output, out);
@@ -406,16 +580,35 @@ int state_17(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
         set_first(n_tree, n_index, operator, state, out);
         set_first(n_tree, operator, expression, state, out);
 
-        int result = state_18(ti, i, n_tree, operator, operator, output, out);
-        if (out >= verbose) printf("Came back up from variable tangent. n_index = %d. result = %d.\n",
-            n_index, result);
-        if (result == -1) return -1;
+        int result = state_18(ti, i, n_tree, operator, n_index, output, out);
+        if (out >= verbose)
+            printf("Came back up from if-statement conditional tangent. n_index = %d. result = %d.\n",
+                n_index, result);
+        if (result == -1)
+            return -1;
+        return parent_func;
+
+    }
+    else if (check_type(ti, t_comp, *i, out)) {
+        *i += 1;
+        int operator = add_node(n_tree, n_expr, e_comp, state, output, out);
+        add_token(n_tree, operator, *i - 1, out);
+        set_first(n_tree, n_index, operator, state, out);
+        set_first(n_tree, operator, expression, state, out);
+
+        int result = state_21(ti, i, n_tree, operator, operator, output, out);
+        if (out >= verbose)
+            printf("Came back up from if-statement conditional tangent. n_index = %d. result = %d.\n",
+                n_index, result);
+        if (result == -1)
+            return -1;
         return parent_func;
     }
 
     else {
-        if (out >= standard) printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
-            ti->ts[*i].line_number, ti->ts[*i].char_number);
+        if (out >= standard)
+            printf("Parse error. Expected an end-parenthesis, comparison, or binary operator at %lu:%lu.\n",
+                ti->ts[*i].line_number, ti->ts[*i].char_number);
         debug_print(state, *i, n_index, parent_func, out);
         return -1;
     }
@@ -430,8 +623,9 @@ int state_16(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 
     if (!check_type(ti, t_par_beg, *i, out)) {
         if (out >= standard) {
-            printf("Parse error. Expected opening parentheses to precede conditional expression ");
-            printf("at %lu:%lu.\n", ti->ts[n_tree->nodes[n_index].token_indices[0]].line_number,
+            printf("Parse error. Expected opening parentheses to precede conditional expression\n ");
+            printf("for the if-statement at %lu:%lu.\n",
+                ti->ts[n_tree->nodes[n_index].token_indices[0]].line_number,
                 ti->ts[n_tree->nodes[n_index].token_indices[0]].char_number);
         }
         debug_print(state, *i, n_index, parent_func, out);
@@ -439,13 +633,24 @@ int state_16(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
     }
     *i += 1;
 
-    // Parse full conditional expression, returning up seeing t_par_end.
-    // The top cond op becomes n_index's first.
-    int result = state_17(ti, i, n_tree, n_index, parent_func, output, out);
-    if (result == -1) return -1;
+    int condition = add_node(n_tree, n_expr, e_condition, state, output, out);
+    set_first(n_tree, n_index, condition, state, out);
+    add_token(n_tree, condition, *i - 1, out);
+
+    // Parse full conditional expression, returning upon seeing t_par_end.
+    int result = state_17(ti, i, n_tree, condition, parent_func, output, out);
+    if (result == -1)
+        return -1;
+
+
+    result = state_6(ti, i, n_tree, condition, n_index, output, out);
+    if (out >= verbose)
+        printf("Came back up out of if-statement's body tangent.\n");
+    if (result == -1)
+        return -1;
     // Parse (presumed) else statement.
     // This will become (this) n_index's second.
-    return state_20(ti, i, n_tree, n_index, parent_func, output, out);
+    return state_20(ti, i, n_tree, n_index, n_index, output, out);
 }
 
 // Continuous tree construction of chained binary operators.
@@ -599,7 +804,7 @@ int state_11(struct token_index* ti, int* i, struct tree* n_tree, int n_index, i
 
     if (check_type(ti, t_semicolon, *i, out)) {
         *i += 1;
-        return state_1(ti, i, n_tree, n_index, parent_func, output, out);
+        return parent_func; //state_1(ti, i, n_tree, n_index, parent_func, output, out);
     }
     else {
         if (out >= standard) printf("Parse error. Expected a semicolon to finish comparison at %lu:%lu.\n",
@@ -735,7 +940,7 @@ int state_8(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
     if (check_type(ti, t_semicolon, *i, out)) {
         *i += 1;
-        return state_1(ti, i, n_tree, n_index, n_tree->nodes[parent_func].parent, output, out);
+        return n_tree->nodes[parent_func].parent; //state_1(ti, i, n_tree, n_index, n_tree->nodes[parent_func].parent, output, out);
     }
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
@@ -784,7 +989,7 @@ int state_7(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
     if (check_type(ti, t_semicolon, *i, out)) {
         *i += 1;
-        return state_1(ti, i, n_tree, expression, n_tree->nodes[parent_func].parent, output, out);
+        return n_tree->nodes[parent_func].parent; //state_1(ti, i, n_tree, expression, n_tree->nodes[parent_func].parent, output, out);
     }
     else if (check_type(ti, t_binop, *i, out)) {
         *i += 1;
@@ -794,7 +999,7 @@ int state_7(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
         add_token(n_tree, operator, *i - 1, out);
         return state_8(ti, i, n_tree, operator, parent_func, output, out);
     }
-    else if (check_type(ti, t_neq, *i, out) || check_type(ti, t_double_eq, *i, out)) {
+    else if (check_type(ti, t_comp, *i, out)) {
         *i += 1;
         int comparison = add_node(n_tree, n_expr, e_comp, state, output, out);
         add_token(n_tree, comparison, *i - 1, out);
@@ -843,7 +1048,11 @@ int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
 
         if (check_type(ti, t_semicolon, *i, out)) {
             *i += 1;
-            return state_1(ti, i, n_tree, return_node_index, n_tree->nodes[parent_func].parent, output, out);
+            if (ti->n > *i && check_type(ti, t_else, *i, out)) {
+                //*i += 1;
+                return parent_func;
+            }
+            return n_tree->nodes[parent_func].parent; //state_1(ti, i, n_tree, return_node_index, n_tree->nodes[parent_func].parent, output, out);
         }
         else if (check_type(ti, t_binop, *i, out)) {
             *i += 1;
@@ -859,6 +1068,13 @@ int state_6(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
             debug_print(state, *i, n_index, parent_func, out);
             return -1;
         }
+    }
+    if (check_type(ti, t_if, *i, out)) {
+        *i += 1;
+        int if_node = add_node(n_tree, n_stat, s_if, state, output, out);
+        set_second(n_tree, n_index, if_node, state, out);
+        add_token(n_tree, if_node, *i - 1, out);
+        return state_16(ti, i, n_tree, if_node, n_index, output, out);
     }
     if (check_type(ti, t_type, *i, out)) *i += 1;
     else {
@@ -965,7 +1181,8 @@ int state_4(struct token_index* ti, int* i, struct tree* n_tree, int n_index, in
                 ti->ts[*i].line_number, ti->ts[*i].char_number);
             debug_print(state, *i, n_index, parent_func, out);
             *i += 1;
-            return state_1(ti, i, n_tree, return_node_index, n_tree->nodes[n_index].parent, output, out);
+            return n_tree->nodes[n_index].parent;
+            //return state_1(ti, i, n_tree, return_node_index, n_tree->nodes[n_index].parent, output, out);
         }
         else {
             return state_7(ti, i, n_tree, return_node_index, n_index, output, out);
@@ -1094,43 +1311,54 @@ int state_1(struct token_index* ti, int *i, struct tree* n_tree, int n_index, in
     static const int state = 1;
     debug_print(state, *i, n_index, parent_func, out);
 
-    if (ti->n <= *i) return END_STATE;
-    // Program must consist of only functions at its highest level, and must have at least one function.
-    if (!check_type(ti, t_type, *i, out)) {
-        if (out >= standard) printf("Parse error. Expected function type at %lu:%lu.\n",
-        ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, n_index, parent_func, out);
-        return -1;
-    }
+    int new_parent = parent_func;
 
-    *i += 1;
-    if (!check_type(ti, t_id, *i, out)) {
-        if (out >= standard) printf("Parse error. Expected function name at %lu:%lu.\n",
-        ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, n_index, parent_func, out);
-        return -1;
-    }
+    while (ti->n > *i) {
+        // Program must consist of only functions at its highest level, and must have at least one function.
+        if (!check_type(ti, t_type, *i, out)) {
+            if (out >= standard)
+                printf("Parse error. Expected function type at %lu:%lu.\n",
+                    ti->ts[*i].line_number, ti->ts[*i].char_number);
+            debug_print(state, *i, n_index, parent_func, out);
+            return -1;
+        }
+        *i += 1;
 
-    *i += 1;
-    if (!check_type(ti, t_par_beg, *i, out)) {
-        if (out >= standard) printf("Parse error. Expected '(' to precede function parameters at %lu:%lu.\n",
-        ti->ts[*i].line_number, ti->ts[*i].char_number);
-        debug_print(state, *i, n_index, parent_func, out);
-        return -1;
-    }
-    *i += 1;
+        if (!check_type(ti, t_id, *i, out)) {
+            if (out >= standard)
+                printf("Parse error. Expected function name at %lu:%lu.\n",
+                    ti->ts[*i].line_number, ti->ts[*i].char_number);
+            debug_print(state, *i, n_index, parent_func, out);
+            return -1;
+        }
+        *i += 1;
 
-    int top_node_index = add_node(n_tree, n_prog, 0, state, output, out);
-    set_second(n_tree, parent_func, top_node_index, state, out);
-    int fun_declaration = add_node(n_tree, n_stat, s_fun_bind, state, output, out);
-    add_token(n_tree, fun_declaration, *i - 3, out);
-    add_token(n_tree, fun_declaration, *i - 2, out);
-    if (out >= verbose) printf("Added new function: %s %s\n", ti->ts[*i-3].val, ti->ts[*i-2].val);
-    set_first(n_tree, top_node_index, fun_declaration, state, out);
-    int new_param_node_index = add_node(n_tree, n_expr, e_param, state, output, out);
-    set_first(n_tree, fun_declaration, new_param_node_index, state, out);
-    // TODO: Bind to ftable here, and check for "main" function ID.
-    return state_2(ti, i, n_tree, new_param_node_index, fun_declaration, output, out);
+        if (!check_type(ti, t_par_beg, *i, out)) {
+            if (out >= standard)
+                printf("Parse error. Expected '(' to precede function parameters at %lu:%lu.\n",
+                    ti->ts[*i].line_number, ti->ts[*i].char_number);
+            debug_print(state, *i, n_index, parent_func, out);
+            return -1;
+        }
+        *i += 1;
+
+        int top_node_index = add_node(n_tree, n_prog, 0, state, output, out);
+        set_second(n_tree, new_parent, top_node_index, state, out);
+
+        int fun_declaration = add_node(n_tree, n_stat, s_fun_bind, state, output, out);
+        add_token(n_tree, fun_declaration, *i - 3, out);
+        add_token(n_tree, fun_declaration, *i - 2, out);
+        set_first(n_tree, top_node_index, fun_declaration, state, out);
+
+        int new_param_node_index = add_node(n_tree, n_expr, e_param, state, output, out);
+        set_first(n_tree, fun_declaration, new_param_node_index, state, out);
+
+        if (out >= verbose)
+            printf("Added new function: %s %s\n", ti->ts[*i-3].val, ti->ts[*i-2].val);
+        // TODO: Bind to ftable here, and check for "main" function ID.
+        new_parent = state_2(ti, i, n_tree, new_param_node_index, fun_declaration, output, out);
+    }
+    return END_STATE;
 }
 
 int state_0(struct token_index* ti, int *i, struct tree* n_tree, int n_index,

@@ -42,6 +42,7 @@ enum e_token {
 	t_less_than,
 	t_geq,
 	t_leq,
+	t_comp
 };
 
 enum e_binop {
@@ -69,6 +70,8 @@ enum e_expr {
 	e_funcall,
 	e_comp,
 	e_argument,
+	e_not,
+	e_condition
 };
 
 enum e_nodetype {

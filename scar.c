@@ -17,24 +17,34 @@
 // BodyStats    -> return Val Comp Val ;
 // Type 		-> int
 // Type 		-> float
+// Type 		-> void
 // FunArgs 		-> Type Id, FunArgs
 // FunArgs 		-> Type Id
 // FunArgs 		->
 // Stats 		-> Stat ; Stats
 // Stats 		-> Stat ;
 // Stat 		-> Type Id = Val
+// Stat         -> If ( Cond ) Stats Else ElseBranch
 // Stat			-> return Exp ;
 // Stat			-> return ;
-// Val			-> num
-// Val			-> id
+// ElseBranch   -> Stats Continue
+// ElseBranch   -> Continue
+// Cond         -> Exp
 // Exp 			-> Exp Binop Exp
 // Exp			-> Val
-// Comp         -> ==
-// Comp         -> !=
+// Val			-> num
+// Val			-> id
 // Binop		-> +
 // Binop		-> -
 // Binop		-> *
 // Binop		-> /
+// Binop        -> **
+// Binop        -> ==
+// Binop        -> !=
+// Binop        -> >
+// Binop        -> <
+// Binop        -> >=
+// Binop        -> <=
 
 void print_node(struct tree* node_tree, int n_index, int out) {
     fprint_node(node_tree, n_index, stdout, out);
@@ -95,6 +105,9 @@ void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
                 case e_funcall:
                     fprintf(output, "Expression: Function call");
                     return;
+                case e_condition:
+                    fprintf(output, "Expression: Condition");
+                    return;
                 default:
                     fprintf(output, "Unknown expression node");
                     return;
@@ -110,6 +123,8 @@ void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
 }
 
 void free_tokens(struct token_index* ti) {
+    if (!ti)
+        return;
     for (int i = 0; i < ti->n; i++) {
         free(ti->ts[i].val);
     }
@@ -118,6 +133,8 @@ void free_tokens(struct token_index* ti) {
 }
 
 void free_nodes(struct tree* nt) {
+    if (!nt)
+        return;
     for (int i = 0; i < nt->n; i++) {
         free(nt->nodes[i].token_indices);
     }
@@ -126,17 +143,27 @@ void free_nodes(struct tree* nt) {
 }
 
 void free_ftable(struct ftable_index* ft) {
-    free(ft->fs);
+    if (!ft)
+        return;
+    if (ft->n > 0)
+        free(ft->fs);
     free(ft);
 }
 
 void free_vtable(struct vtable_index* vt) {
-    free(vt->vs);
+    if (!vt)
+        return;
+    if (vt->n > 0)
+        free(vt->vs);
     free(vt);
 }
 
 void free_ivtable(struct ivtable_index* vt) {
-    //free(vt->vs);
+    if (!vt)
+        return;
+    if (vt->n > 0) {
+        free(vt->vs);
+    }
     free(vt);
 }
 
@@ -173,21 +200,21 @@ int main(int argc, char* argv[]) {
     else if (argc >= 3) filename = argv[2];
     FILE* read_ptr = fopen(filename, "r");
     if (read_ptr == NULL) {
-        char* retry_dir = malloc(strlen(program_dir) + strlen(filename));
+        char retry_dir[strlen(program_dir) + strlen(filename) + 1];
         sprintf(retry_dir, "%s%s", program_dir, filename);
         read_ptr = fopen(retry_dir, "r");
-        free(retry_dir);
         if (read_ptr == NULL) {
-            if (out >= standard) printf("File not found.\n");
+            if (out >= standard)
+                printf("Program file not found. Please double-check the name and read permission.\n");
             return fail_input();
         }
     }
-    FILE *write_ptr;
-    write_ptr = fopen("tokens.out", "w");
+    FILE* write_ptr = fopen("tokens.out", "w");
     if (write_ptr == NULL) {
-        if (out >= standard) printf("Could not create/write to file. Check permissions.\n");
+        if (out >= verbose) {
+            printf("Could not create \"tokens.out\" debugging file. Unnecessary, so proceeding.\n");
+        }
         fclose(read_ptr);
-        return 1;
     }
 
     // Lexing
@@ -195,9 +222,10 @@ int main(int argc, char* argv[]) {
     ti->ts = malloc(sizeof(*ti->ts));
     ti->n = 0;
     ti->n = lex(read_ptr, write_ptr, ti, out);
-    if (out >= verbose) printf("Read %lu tokens.\n", ti->n);
-    fclose(read_ptr);
-    fclose(write_ptr);
+    if (out >= verbose)
+        printf("Read %lu tokens.\n", ti->n);
+    if (read_ptr)   fclose(read_ptr);
+    if (write_ptr)  fclose(write_ptr);
 
     if (ti->n) {
         /*if (out >= verbose) {
@@ -212,14 +240,14 @@ int main(int argc, char* argv[]) {
         }*/
         FILE* token_file = fopen("tokens.out", "r");
         if (token_file == NULL) {
-            if (out >= standard) printf("Token file not found.\n");
-            return 1;
+            if (out >= verbose)
+                printf("Could not read \"tokens.out\" debugging file. Unnecessary, so proceeding.\n");
         }
-        FILE* node_file = fopen("nodes.out", "w");
+        FILE* node_file = fopen("nodes.out", "r");
         if (node_file == NULL) {
-            if (out >= standard) printf("Could not create node file.\n");
+            if (out >= verbose)
+                printf("Could not create \"nodes.out\" debugging file. Unnecessary, so proceeding.\n");
             fclose(token_file);
-            return 1;
         }
         // Parsing
         struct tree* node_tree = parse(token_file, node_file, ti, out);
@@ -230,7 +258,7 @@ int main(int argc, char* argv[]) {
                 printf("%3d: ", i);
                 print_node(node_tree, i, out);
                 printf(". Par: %d. Fst: %d. Snd: %d.\n",
-                node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
+                    node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
                 for (int t = 0; t < node_tree->nodes[i].token_count; t++) {
                     printf("%5d val: %s.\n", t, ti->ts[node_tree->nodes[i].token_indices[t]].val);
                 }
@@ -265,20 +293,22 @@ int main(int argc, char* argv[]) {
         }
  */
         // Evaluating
-        fclose(token_file);
-        fclose(node_file);
+        if (token_file) fclose(token_file);
+        if (node_file)  fclose(node_file);
         struct ivtable_index* vtable = malloc(sizeof(*vtable));
         struct ftable_index* ftable = malloc(sizeof(*ftable));
         ftable->start_fun_node = 0;
         ftable->n = 0;
-        ftable->fs = malloc(sizeof(ftable->fs));
-        vtable->vs = malloc(sizeof(vtable->vs));
         vtable->n = 0;
         FILE* eval_output = fopen("eval.out", "w");
+        if (eval_output == NULL && out >= verbose) {
+            printf("Could not create \"eval.out\" debugging file. Unnecessary, so proceeding.\n");
+        };
         int result = start_eval(node_tree, 0, ti, eval_output, vtable, ftable, out);
-        if (out >= verbose) printf("Returned from final evaluation.\n");
+        if (out >= verbose)
+            printf("Returned from final evaluation.\n");
         printf("%d\n", result);
-        fclose(eval_output);
+        if (eval_output) fclose(eval_output);
         if (out >= verbose) {
             for (int f = 0; f < ftable->n; f++) {
                 printf("%3d %s %d", f, ftable->fs[f].id, ftable->fs[f].node_index);
@@ -286,7 +316,8 @@ int main(int argc, char* argv[]) {
                 else printf("\n");
             }
         }
-        if (out >= verbose) printf("Finishing up. Freeing allocated memory.\n");
+        if (out >= verbose)
+            printf("Finishing up. Freeing allocated memory.\n");
         free_ftable(ftable);
         free_ivtable(vtable);
         free_nodes(node_tree);

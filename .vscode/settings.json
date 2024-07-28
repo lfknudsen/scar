@@ -4,5 +4,8 @@
     "stdlib.h": "c",
     "stdio.h": "c",
     "typeinfo": "c"
-  }
+  },
+  "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
+    "clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling"
+  ]
 }

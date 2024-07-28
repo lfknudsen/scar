@@ -13,9 +13,9 @@ int init_token(struct token_index* ti, unsigned long* token_count, int* sum_size
 	ti->ts[*token_count].type = token_type;
 	ti->ts[*token_count].line_number = line_number;
 	ti->ts[*token_count].char_number = char_number;
-	size_t sizeof_val = sizeof(*ti->ts[*token_count].val) * (strlen(string));
+	size_t sizeof_val = sizeof(*ti->ts[*token_count].val) * (strlen(string) + 1);
 	*sum_sizeof_val += sizeof_val;
-	ti->ts[*token_count].val = malloc(sizeof(*ti->ts[*token_count].val) * (strlen(string)));
+	ti->ts[*token_count].val = malloc(sizeof_val);
 	strcpy(ti->ts[*token_count].val, string);
 	ti->ts[*token_count].val[strlen(string)] = '\0';
 	*token_count += 1;
@@ -165,7 +165,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 					} else {
 						is_floating_type ++;
 						string_len ++;
-						number_string = realloc(number_string, sizeof(*number_string) * (string_len));
+						number_string = realloc(number_string, sizeof(*number_string) * string_len + 1);
 						number_string[string_len - 1] = c;
 						char_number_add ++;
 						c = fgetc(f);
@@ -173,7 +173,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 				}
 				else {
 					string_len ++;
-					number_string = realloc(number_string, sizeof(*number_string) * (string_len));
+					number_string = realloc(number_string, sizeof(*number_string) * string_len + 1);
 					number_string[string_len - 1] = c;
 					char_number_add ++;
 					c = fgetc(f);
@@ -249,17 +249,17 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
 				fprintf(output, "%3lu: TOKEN: DEQ\n", token_count - 1);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
-					line_number, char_number, "==", t_binop);
+					line_number, char_number, "==", t_comp);
 			}
 			else if (read_ahead(f, '>', &char_number, &line_number, out) == 1) {
 				fprintf(output, "%3lu: TOKEN: GREATER THAN OR EQUAL\n", token_count - 1);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
-					line_number, char_number, ">=", t_binop);
+					line_number, char_number, ">=", t_comp);
 			}
 			else if (read_ahead(f, '<', &char_number, &line_number, out) == 1) {
 				fprintf(output, "%3lu: TOKEN: LESS THAN OR EQUAL\n", token_count - 1);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
-					line_number, char_number, "<=", t_binop);
+					line_number, char_number, "<=", t_comp);
 			}
 			else {
 				fprintf(output, "%3lu: TOKEN: EQ\n", token_count);
@@ -281,7 +281,7 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
 				fprintf(output, "%3lu: TOKEN: NOT EQUAL\n", token_count);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
-					line_number, char_number, "!=", t_binop);
+					line_number, char_number, "!=", t_comp);
 			} else {
 				fprintf(output, "%3lu: TOKEN: NOT\n", token_count);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
@@ -292,24 +292,24 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
 				fprintf(output, "%3lu: TOKEN: GREATER THAN OR EQUAL\n", token_count);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
-					line_number, char_number, ">=", t_binop);
+					line_number, char_number, ">=", t_comp);
 			}
 			else {
 				fprintf(output, "%3lu: TOKEN: GREATER THAN\n", token_count);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
-					line_number, char_number, ">", t_binop);
+					line_number, char_number, ">", t_comp);
 			}
 		}
 		else if (c == '<') {
 			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
 				fprintf(output, "%3lu: TOKEN: LESS THAN OR EQUAL\n", token_count);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
-					line_number, char_number, "<=", t_binop);
+					line_number, char_number, "<=", t_comp);
 			}
 			else {
 				fprintf(output, "%3lu: TOKEN: LESS THAN\n", token_count);
 				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
-					line_number, char_number, "<", t_binop);
+					line_number, char_number, "<", t_comp);
 			}
 		}
 		else {
