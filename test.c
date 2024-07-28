@@ -43,22 +43,37 @@ int compare(const size_t base_comp_len, char* name, const char* base_comp,
     return success;
 }
 
-void run(const char* out_dirname, char* name, const char* out_ext,
-        const char* prog_dirname, const char* base_exec, const char* pipe, const size_t exec_len)
+int run(const char* out_dirname, char* name, const char* out_ext,
+        const char* prog_dirname, const char* base_exec, const char* pipe, const size_t exec_len,
+        char check_leak)
 {
-    char* command = malloc(exec_len + strlen(name) * 2);
-    sprintf(command, "%s%s%s%s%s%s%s", base_exec, prog_dirname, name, pipe, out_dirname, name, out_ext);
-    #pragma omp critical
-    {
-        system(command);
+    char memory_safe = 1;
+    char* command;
+    if (check_leak) {
+        command = malloc(strlen("valgrind -q ") + exec_len + strlen(name) * 2);
+        sprintf(command, "valgrind -q %s%s%s%s%s%s%s", base_exec, prog_dirname, name, pipe, out_dirname, name, out_ext);
+        #pragma omp critical
+        {
+            if (system(command)) {
+                memory_safe = 0;
+            }
+        }
+    }
+    else {
+        command = malloc(exec_len + strlen(name) * 2);
+        sprintf(command, "%s%s%s%s%s%s%s", base_exec, prog_dirname, name, pipe, out_dirname, name, out_ext);
+        #pragma omp critical
+        {
+            system(command);
+        }
     }
     free(command);
-    return;
+    return memory_safe;
 }
 
 int single_test(char* name, const char* prog_dirname, const char* out_dirname,
     const char* exp_dirname, const char* out_ext, const char* base_exec, const char* pipe,
-    size_t exec_len)
+    size_t exec_len, char check_leak)
 {
     char test_target_exists = 0;
     char included_prog_dir = 0;
@@ -95,11 +110,12 @@ int single_test(char* name, const char* prog_dirname, const char* out_dirname,
         }
         printf("\n");
 
-        run(out_dirname, name, out_ext, prog_dirname, base_exec, pipe, exec_len);
+        run(out_dirname, name, out_ext, prog_dirname, base_exec, pipe, exec_len, check_leak);
 
         test_cmd = malloc(strlen("cat ") + strlen(out_dirname) +
             strlen(name) + strlen(out_ext) + 1);
         sprintf(test_cmd, "cat %s%s%s", out_dirname, name, out_ext);
+
         printf("\n----------------OUTPUT----------------\n");
         system(test_cmd);
         printf("--------------------------------------\n");
@@ -115,9 +131,27 @@ int single_test(char* name, const char* prog_dirname, const char* out_dirname,
             printf("\n\n---------------EXPECTED---------------\n");
             system(test_cmd);
             printf("--------------------------------------\n");
+
+            test_cmd = malloc(strlen("cmp -s ") + strlen(exp_dirname) + strlen(name) * 2 + strlen(out_dirname) + strlen(out_ext) * 2 + 1);
+            sprintf(test_cmd, "cmp -s %s%s%s%s%s%s", exp_dirname, name, out_ext, out_dirname, name, out_ext);
+            if (!system(test_cmd)) {
+                printf("Create expectation file from output? [y/N]\n");
+                char input = getchar();
+                if (input == 'y') {
+                    test_cmd = malloc(strlen("cp ") + strlen(out_dirname) +
+                        strlen(name) + strlen(out_ext) + 1 + strlen(exp_dirname) +
+                        strlen(name) + strlen(out_ext) + 1);
+                    sprintf(test_cmd, "cp %s%s%s %s%s%s", out_dirname, name, out_ext,
+                        exp_dirname, name, out_ext);
+                    if (!system(test_cmd))
+                        printf("Created expectation file.\n");
+                    else
+                        printf("Could not create expectation file.\n");
+                }
+            }
         }
         else {
-            printf("\n\n-----------MISSING EXPECTED-----------\n");
+            printf("\n\n-----------\x1b[33mMISSING EXPECTED\x1b[m-----------\n");
             printf("Create expectation file from output? [y/N]\n");
             char input = getchar();
             if (input == 'y') {
@@ -139,15 +173,16 @@ int single_test(char* name, const char* prog_dirname, const char* out_dirname,
 
 int test_missing(struct dirent** progs, int n, const char* prog_dirname,
         const char* out_dirname, const char* exp_dirname, const char* out_ext,
-        const char* base_exec, const char* pipe, size_t exec_len) {
-    char* test_cmd;
+        const char* base_exec, const char* pipe, size_t exec_len, char check_leak) {
     for (int i = 0; i < n; i++) {
-        test_cmd =
-            malloc(strlen("test -e ") + strlen(exp_dirname) + strlen(progs[i]->d_name) + strlen(out_ext) + 1);
+        char test_cmd
+            [strlen("test -e ") + strlen(exp_dirname) + strlen(progs[i]->d_name) + strlen(out_ext) + 1];
         sprintf(test_cmd, "test -e %s%s%s", exp_dirname, progs[i]->d_name, out_ext);
-        if (system(test_cmd))
+        if (system(test_cmd)) {
             single_test(progs[i]->d_name, prog_dirname, out_dirname,
-                exp_dirname, out_ext, base_exec, pipe, exec_len);
+                exp_dirname, out_ext, base_exec, pipe, exec_len, check_leak);
+            getchar();
+        }
     }
     return 0;
 }
@@ -194,6 +229,8 @@ int check_directories() {
     -f          Parallelise running and printing (meaning not alphabetically).
     -v          Print additional information to stdout.
     -m          Individually test each program that doesn't have an output file in /tests/exp/.
+    -l          Check for memory leaks with valgrind -q. Takes longer, which is
+                especially noticeable without the -f option to print each result immediately.
 
     <filename>  Individually test the given file in /tests/programs/ (do not include the full path).
                 This will print the program, then show the output and expected output next to each
@@ -227,6 +264,7 @@ int main (int argc, char** argv) {
     char sequential     = 0;
     char verbosity      = 0;
     char check_missing  = 0;
+    char check_leak     = 0;
     int  target         = 0;
 
     for (int i = 1; i < argc; i++) {
@@ -236,7 +274,13 @@ int main (int argc, char** argv) {
         else if (strcmp(argv[i], "-s") == 0) sequential     =  1;
         else if (strcmp(argv[i], "-f") == 0) sequential     = -1;
         else if (strcmp(argv[i], "-m") == 0) check_missing  =  1;
+        else if (strcmp(argv[i], "-l") == 0) check_leak     =  1;
         else                                 target         =  i;
+    }
+
+    if (check_leak && !system("test -x valgrind")) {
+        printf("Valgrind not found on PATH. Running without.\n");
+        check_leak = 0;
     }
 
     if (check_missing) target = 0;
@@ -249,14 +293,14 @@ int main (int argc, char** argv) {
         if      (sequential ==  0) printf("Parallelising running but not printing.\n");
         else if (sequential ==  1) printf("Running tests in the same thread.\n");
         else if (sequential == -1) printf("Parallelising testing and printing.\n");
+        if      (check_leak)       printf("Checking memory leakage with Valgrind.\n");
         if      (check_missing)    printf("Individually testing all programs with missing expected outputs.\n");
         else if (target      >  0) printf("Testing only %s\n", argv[target]);
     }
 
-
     if (target)
         return single_test(argv[target], prog_dirname, out_dirname, exp_dirname,
-            out_ext, base_exec, pipe, exec_len);
+            out_ext, base_exec, pipe, exec_len, check_leak);
 
     int success_count = 0;
 
@@ -264,24 +308,38 @@ int main (int argc, char** argv) {
     int n = scandir("tests/programs", &sorted_programs, filter, alphasort);
 
     if (check_missing) return test_missing(sorted_programs, n, prog_dirname, out_dirname,
-        exp_dirname, out_ext, base_exec, pipe, exec_len);
+        exp_dirname, out_ext, base_exec, pipe, exec_len, check_leak);
 
+    volatile int memory_leak = 0;
     if (skip_run != 1) {
         if (sequential == -1) {
             #pragma omp parallel for reduction(+ : success_count)
             for (int i = 0; i < n; i++) {
-                run(out_dirname, sorted_programs[i]->d_name, out_ext, prog_dirname,
-                    base_exec, pipe, exec_len);
-                success_count += compare(base_comp_len, sorted_programs[i]->d_name,
-                    base_comp, out_dirname, out_ext, exp_dirname);
-                free(sorted_programs[i]);
+                if (memory_leak == 0) {
+                    int memory_safe = run(out_dirname, sorted_programs[i]->d_name, out_ext, prog_dirname,
+                        base_exec, pipe, exec_len, check_leak);
+                    success_count += compare(base_comp_len, sorted_programs[i]->d_name,
+                        base_comp, out_dirname, out_ext, exp_dirname);
+                    free(sorted_programs[i]);
+                    if (memory_safe == 0)
+                        memory_leak = 1;
+                }
+                else {
+                    continue;
+                }
             }
         }
         else {
             #pragma omp parallel for if (sequential == 0)
             for (int i = 0; i < n; i++) {
-                run(out_dirname, sorted_programs[i]->d_name, out_ext,
-                    prog_dirname, base_exec, pipe, exec_len);
+                if (memory_leak == 0) {
+                    int memory_safe = run(out_dirname, sorted_programs[i]->d_name, out_ext,
+                        prog_dirname, base_exec, pipe, exec_len, check_leak);
+                    if (memory_safe == 0)
+                        memory_leak = 1;
+                }
+                else
+                    continue;
             }
         }
     }
