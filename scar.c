@@ -9,42 +9,101 @@
 #include "parser.h"
 #include "eval.h"
 
-// For now, grammar is as follows:
-// FunDec 		-> Type Id ( FunArgs ) = { BodyStats }
-// BodyStats 	-> Stats ; BodyStats
-// BodyStats 	-> return Exp ;
-// BodyStats	-> return ;
-// BodyStats    -> return Val Comp Val ;
-// Type 		-> int
-// Type 		-> float
-// Type 		-> void
-// FunArgs 		-> Type Id, FunArgs
-// FunArgs 		-> Type Id
-// FunArgs 		->
-// Stats 		-> Stat ; Stats
-// Stats 		-> Stat ;
-// Stat 		-> Type Id = Val
-// Stat         -> If ( Cond ) Stats Else ElseBranch
-// Stat			-> return Exp ;
-// Stat			-> return ;
-// ElseBranch   -> Stats Continue
-// ElseBranch   -> Continue
-// Cond         -> Exp
-// Exp 			-> Exp Binop Exp
-// Exp			-> Val
-// Val			-> num
-// Val			-> id
-// Binop		-> +
-// Binop		-> -
-// Binop		-> *
-// Binop		-> /
-// Binop        -> **
-// Binop        -> ==
-// Binop        -> !=
-// Binop        -> >
-// Binop        -> <
-// Binop        -> >=
-// Binop        -> <=
+/* For now, grammar is as follows:
+Top      	-> Prog
+Prog     	-> FunDecs
+FunDecs  	-> FunDec FunDecs
+FunDecs  	-> FunDec
+FunDec 		-> Type Id ( FunArgs = BodyStats
+BodyStats	-> Stats BodyStats
+BodyStats	-> if ( Exps ) OuterThen else OuterElse
+BodyStats	-> return RetVal
+OuterThen	-> Stat OuterThen
+OuterThen	-> If ( Exps ) Then else ElseBranch OuterThen
+OuterThen	-> return RetVal
+OuterElse	-> Stat OuterElse
+OuterElse	-> if ( Exps ) Then else ElseBranch OuterElse
+OuterElse	-> return Retval
+Then	    -> Stat Then
+Then     	-> Stat
+Then     	-> if ( Exps ) Then else ElseBranch
+Then     	-> return RetVal
+ElseBranch	-> Stat ElseBranch
+ElseBranch	-> continue ;
+ElseBranch	-> return RetVal
+Type 		-> int
+Type 		-> float
+Type 		-> void
+FunArgs 	-> FunArg FunArgs
+FunArgs  	-> Type Id )
+FunArgs 	-> )
+FunArg      -> Type Id ,
+Stats 		-> Stat Stats
+Stats 		-> Stat
+Stat     	-> Type Id = Exps ;
+Stat        -> FunCall ;
+Stat        -> if ( Exps ) Stats else ElsePart
+ElsePart    -> Stats
+ElsePart    -> continue ;
+FunCall     -> Id ( Params )
+Params      -> Exps ParamNext
+Params      ->
+ParamNext   -> , Params
+ParamNext   ->
+Exps        -> Exp Comp Exp
+Exp         -> Exp2 Exp1
+Exp1        -> + Exp2 Exp1
+Exp1        -> - Exp2 Exp1
+Exp1        ->
+Exp2        -> Exp4 Exp3
+Exp3       	-> * Exp4 Exp3
+Exp3       	-> / Exp4 Exp3
+Exp3      	->
+Exp4        -> Exp5 Exp4
+Exp5        -> ** Exp4
+Exp4        -> Val
+Exp4        -> ( Exps )
+Exp4        -> FunCall
+Val			-> num
+Val			-> id
+Binop		-> +
+Binop		-> -
+Binop		-> *
+Binop		-> /
+Binop		-> **
+Comp     	-> ==
+Comp     	-> !=
+Comp     	-> >
+Comp     	-> <
+Comp     	-> >=
+Comp     	-> <=
+RetVal   	-> Exps ;
+RetVal   	-> ;
+*/
+
+/*
+scratchpad:
+Stat        -> Matched
+Stat        -> Unmatched
+Matched     -> if ( Exps ) Matched else Matched
+Matched     -> Type Id = Exps ;
+Matched     -> FunCall ;
+Unmatched   -> if ( Exps ) Matched else Unmatched
+Unmatched   -> if ( Exps ) Stats
+
+Exps        -> Exp Comp Exp
+Exps        -> Exp
+Exp         -> Exp + Exp2
+Exp         -> Exp - Exp2
+Exp         -> Exp2
+Exp3        -> Exp2 * Exp3
+Exp2        -> Exp2 / Exp3
+Exp2        -> Exp3
+Exp3        -> ( Exp )
+Exp3        -> FunCall
+Exp3		-> Val
+
+*/
 
 void print_node(struct tree* node_tree, int n_index, int out) {
     fprint_node(node_tree, n_index, stdout, out);

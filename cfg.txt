@@ -1,0 +1,69 @@
+Top      	-> Prog
+Prog     	-> FunDecs
+FunDecs  	-> FunDec FunDecs
+FunDecs  	-> FunDec
+FunDec 		-> Type Id ( FunArgs = BodyStats
+BodyStats	-> Stats BodyStats
+BodyStats	-> if ( Exps ) OuterThen else OuterElse
+BodyStats	-> return RetVal
+OuterThen	-> Stat OuterThen
+OuterThen	-> If ( Exps ) Then else ElseBranch OuterThen
+OuterThen	-> return RetVal
+OuterElse	-> Stat OuterElse
+OuterElse	-> if ( Exps ) Then else ElseBranch OuterElse
+OuterElse	-> return Retval
+Then	    -> Stat Then
+Then     	-> Stat
+Then     	-> if ( Exps ) Then else ElseBranch
+Then     	-> return RetVal
+ElseBranch	-> Stat ElseBranch
+ElseBranch	-> continue ;
+ElseBranch	-> return RetVal
+Type 		-> int
+Type 		-> float
+Type 		-> void
+FunArgs 	-> FunArg FunArgs
+FunArgs  	-> Type Id )
+FunArgs 	-> )
+FunArg      -> Type Id ,
+Stats 		-> Stat Stats
+Stats 		-> Stat
+Stat     	-> Type Id = Exps ;
+Stat        -> FunCall ;
+Stat        -> if ( Exps ) Stats else ElsePart
+ElsePart    -> Stats
+ElsePart    -> continue ;
+FunCall     -> Id ( Params )
+Params      -> Exps ParamNext
+Params      ->
+ParamNext   -> , Params
+ParamNext   ->
+Exps        -> Exp Comp Exp
+Exp         -> Exp2 Exp1
+Exp1        -> + Exp2 Exp1
+Exp1        -> - Exp2 Exp1
+Exp1        ->
+Exp2        -> Exp4 Exp3
+Exp3       	-> * Exp4 Exp3
+Exp3       	-> / Exp4 Exp3
+Exp3      	->
+Exp4        -> Exp5 Exp4
+Exp5        -> ** Exp4
+Exp4        -> Val
+Exp4        -> ( Exps )
+Exp4        -> FunCall
+Val			-> num
+Val			-> id
+Binop		-> +
+Binop		-> -
+Binop		-> *
+Binop		-> /
+Binop		-> **
+Comp     	-> ==
+Comp     	-> !=
+Comp     	-> >
+Comp     	-> <
+Comp     	-> >=
+Comp     	-> <=
+RetVal   	-> Exps ;
+RetVal   	-> ;
