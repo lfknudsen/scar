@@ -5,6 +5,6 @@
 
 #include "scar.h"
 
-int start_eval(struct ivtable_index* vtable, struct ftable_index* ftable, struct state* st);
+struct Val start_eval(struct vtable_index* vtable, struct ftable_index* ftable, struct state* state);
 
 #endif

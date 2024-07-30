@@ -5,13 +5,6 @@
 
 //#define VERBOSE 0
 
-enum Type {
-	int_val,
-	float_val,
-	string,
-	none
-};
-
 enum e_token {
 	t_type,
 	t_type_int,
@@ -98,10 +91,6 @@ struct node_tree {
 	struct node* ns;
 };
 
-struct Int {
-	int val;
-};
-
 struct token {
 	enum e_token type;
 	char* val;
@@ -126,17 +115,6 @@ struct ftable_index {
 	unsigned int start_fun_node;
 };
 
-struct var_binding {
-	char* id;
-	unsigned int val_length;
-	int val;
-};
-
-struct vtable_index {
-	unsigned int n;
-	struct var_binding* vs;
-};
-
 struct ivar_binding {
 	char* id;
 	int val;
@@ -144,7 +122,7 @@ struct ivar_binding {
 
 struct ivtable_index {
 	unsigned int n;
-	struct var_binding* vs;
+	struct ivar_binding* vs;
 };
 
 enum error_codes {
@@ -157,6 +135,37 @@ enum out_mode {
     standard,
     verbose
 };
+
+enum Type {
+	error,
+	int_val,
+	float_val,
+	char_arr,
+	bool_val,
+	none
+};
+
+struct Val {
+	enum Type type;
+	union val {
+		int Int;
+		float Float;
+		char* String;
+		char Bool;
+	} value;
+};
+
+struct var_binding {
+	struct Val val;
+	char* id;
+};
+
+struct vtable_index {
+	unsigned int n;
+	struct var_binding* vs;
+};
+
+void print_val(FILE* output, struct Val val);
 
 struct state {
 	struct node_tree* tree;
@@ -174,6 +183,8 @@ void print_node(int n_index, struct state* st);
 void fprint_node(int n_index, struct state* st);
 
 void free_ivtable(struct ivtable_index* vt);
+
+void free_vtable(struct vtable_index* vt);
 
 char* get_val(int n_index, struct state* st);
 

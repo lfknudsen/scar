@@ -214,6 +214,26 @@ char* get_val(int n_index, struct state* state) {
     return "";
 }
 
+void print_val(FILE* output, struct Val val) {
+    switch (val.type) {
+        case (int_val):
+            fprintf(output, "%d", val.value.Int);
+            return;
+        case (float_val):
+            fprintf(output, "%f", val.value.Float);
+            return;
+        case (char_arr):
+            fprintf(output, "%s", val.value.String);
+            return;
+        case (bool_val):
+            fprintf(output, "%d", val.value.Bool);
+            return;
+        default:
+            fprintf(output, "%s", val.value.String);
+            return;
+    }
+}
+
 void free_tokens(struct token_index* ti) {
     if (!ti)
         return;
@@ -393,7 +413,7 @@ int main(int argc, char* argv[]) {
         // Evaluastate->ting
         if (token_file) fclose(token_file);
         if (node_file)  fclose(node_file);
-        struct ivtable_index* vtable = malloc(sizeof(*vtable));
+        struct vtable_index* vtable = malloc(sizeof(*vtable));
         struct ftable_index* ftable = malloc(sizeof(*ftable));
         ftable->start_fun_node = 0;
         ftable->n = 0;
@@ -403,10 +423,11 @@ int main(int argc, char* argv[]) {
             printf("Could not create \"eval.out\" debugging file. Unnecessary, so proceeding.\n");
         };
         state->output = eval_output;
-        int result = start_eval(vtable, ftable, state);
+        struct Val result = start_eval(vtable, ftable, state);
         if (out >= verbose)
             printf("Returned from final evaluation.\n");
-        printf("%d\n", result);
+        print_val(stdout, result);
+        printf("\n");
         if (eval_output) fclose(eval_output);
         if (out >= verbose) {
             for (int f = 0; f < ftable->n; f++) {
@@ -418,7 +439,7 @@ int main(int argc, char* argv[]) {
         if (out >= verbose)
             printf("Finishing up. Freeing allocated memory.\n");
         free_ftable(ftable);
-        free_ivtable(vtable);
+        free_vtable(vtable);
         free_nodes(state->tree);
     }
     free_tokens(state->ti);
