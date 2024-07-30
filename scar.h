@@ -37,7 +37,7 @@ enum e_token {
 	t_bool,
 	t_if,
 	t_else,
-	t_continue,
+	t_proceed,
 	t_greater_than,
 	t_less_than,
 	t_geq,
@@ -59,7 +59,8 @@ enum e_stat {
 	s_if,
 	s_else,
 	s_return,
-	s_fun_body
+	s_fun_body,
+	s_proceed
 };
 
 enum e_expr {
@@ -82,20 +83,19 @@ enum e_nodetype {
 };
 
 struct node {
-	enum e_nodetype nodetype;
+	enum e_nodetype node_type;
 	int specific_type;
 	int token_count;
 	int* token_indices;
-	int extra_info;
 	int first;
 	int second;
 	int parent;
 	int print_indent;
 };
 
-struct tree {
-	struct node* nodes;
+struct node_tree {
 	int n;
+	struct node* ns;
 };
 
 struct Int {
@@ -150,7 +150,6 @@ struct ivtable_index {
 enum error_codes {
 	no_error,
 	unbound_variable_name,
-
 };
 
 enum out_mode {
@@ -159,12 +158,23 @@ enum out_mode {
     verbose
 };
 
+struct state {
+	struct node_tree* tree;
+	struct token_index* ti;
+	FILE* output;
+	int i;
+	enum out_mode out;
+	int state;
+};
+
 int out;
 
-void print_node(struct tree* node_tree, int n_index, int out);
+void print_node(int n_index, struct state* st);
 
-void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out);
+void fprint_node(int n_index, struct state* st);
 
 void free_ivtable(struct ivtable_index* vt);
+
+char* get_val(int n_index, struct state* st);
 
 #endif

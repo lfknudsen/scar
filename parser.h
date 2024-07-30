@@ -5,6 +5,6 @@
 
 #include "scar.h"
 
-struct tree* parse(FILE *f, FILE* output, struct token_index *ti, int out);
+struct node_tree* parse(FILE *f, struct state* st);
 
 #endif

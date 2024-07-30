@@ -3,6 +3,6 @@
 
 #include "scar.h"
 
-int lex(FILE *f, FILE *output, struct token_index *ti, int out);
+int lex(FILE* f, struct state* state);
 
 #endif

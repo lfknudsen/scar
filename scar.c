@@ -29,7 +29,7 @@ Then     	-> Stat
 Then     	-> if ( Exps ) Then else ElseBranch
 Then     	-> return RetVal
 ElseBranch	-> Stat ElseBranch
-ElseBranch	-> continue ;
+ElseBranch	-> constate->tinue ;
 ElseBranch	-> return RetVal
 Type 		-> int
 Type 		-> float
@@ -42,15 +42,33 @@ Stats 		-> Stat Stats
 Stats 		-> Stat
 Stat     	-> Type Id = Exps ;
 Stat        -> FunCall ;
+Stat        -> while ( Exps ) Stats loop ;
 Stat        -> if ( Exps ) Stats else ElsePart
 ElsePart    -> Stats
-ElsePart    -> continue ;
+ElsePart    -> proceed ;
 FunCall     -> Id ( Params )
 Params      -> Exps ParamNext
 Params      ->
 ParamNext   -> , Params
 ParamNext   ->
-Exps        -> Exp Comp Exp
+Exps        -> ExpsA Truth ExpsA
+Exps        -> ExpsA
+ExpsA       -> ExpsB Comp ExpsB
+ExpsB       -> ExpsC
+
+ExpsA       -> ExpsB ExpsC
+ExpsC       -> && ExpsD
+ExpsC       ->
+ExpsB        > ExpsE ExpsF
+ExpsF       -> Comp ExpsG
+ExpsF       ->
+ExpsD       -> Exp
+Exps
+
+ExpsA ExpsB
+ExpsB       -> Truth ExpsB
+ExpsC        -> Exp Exp0
+Exp0        -> Comp Exp1 Exp
 Exp         -> Exp2 Exp1
 Exp1        -> + Exp2 Exp1
 Exp1        -> - Exp2 Exp1
@@ -79,6 +97,8 @@ Comp     	-> >=
 Comp     	-> <=
 RetVal   	-> Exps ;
 RetVal   	-> ;
+Truth       -> &&
+Truth       -> ||
 */
 
 /*
@@ -105,17 +125,13 @@ Exp3		-> Val
 
 */
 
-void print_node(struct tree* node_tree, int n_index, int out) {
-    fprint_node(node_tree, n_index, stdout, out);
-}
-
-void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
+void node_as_text(int n_index, FILE* output, struct state* st) {
     if (output == NULL) {
         output = stdout;
     }
-    switch (node_tree->nodes[n_index].nodetype) {
+    switch (st->tree->ns[n_index].node_type) {
         case n_stat:
-            switch (node_tree->nodes[n_index].specific_type) {
+            switch (st->tree->ns[n_index].specific_type) {
                 case s_var_bind:
                     fprintf(output, "Statement: Variable bind");
                     return;
@@ -137,12 +153,15 @@ void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
                 case s_fun_body:
                     fprintf(output, "Statement: Function body");
                     return;
+                case s_proceed:
+                    fprintf(output, "Statement: Proceed");
+                    return;
                 default:
                     fprintf(output, "Unknown statement node");
                     return;
             }
         case n_expr:
-            switch (node_tree->nodes[n_index].specific_type) {
+            switch (st->tree->ns[n_index].specific_type) {
                 case e_id:
                     fprintf(output, "Expression: Variable name");
                     return;
@@ -181,6 +200,20 @@ void fprint_node(struct tree* node_tree, int n_index, FILE* output, int out) {
     return;
 }
 
+void print_node(int n_index, struct state* state) {
+    node_as_text(n_index, stdout, state);
+}
+
+void fprint_node(int n_index, struct state* state) {
+    node_as_text(n_index, state->output, state);
+}
+
+char* get_val(int n_index, struct state* state) {
+    if (state->tree->ns[n_index].token_count > 0)
+        return state->ti->ts[state->tree->ns[n_index].token_indices[0]].val;
+    return "";
+}
+
 void free_tokens(struct token_index* ti) {
     if (!ti)
         return;
@@ -191,13 +224,13 @@ void free_tokens(struct token_index* ti) {
     free(ti);
 }
 
-void free_nodes(struct tree* nt) {
+void free_nodes(struct node_tree* nt) {
     if (!nt)
         return;
     for (int i = 0; i < nt->n; i++) {
-        free(nt->nodes[i].token_indices);
+        free(nt->ns[i].token_indices);
     }
-    free(nt->nodes);
+    free(nt->ns);
     free(nt);
 }
 
@@ -253,6 +286,7 @@ int main(int argc, char* argv[]) {
         }
         printf("\n");
     }
+
     const char* program_dir = "tests/programs/";
     char* filename;
     if (argc == 2) filename = argv[1];
@@ -276,25 +310,29 @@ int main(int argc, char* argv[]) {
         fclose(read_ptr);
     }
 
+    struct state* state = malloc(sizeof(*state));
+    state->out = out;
+    state->output = write_ptr;
+
     // Lexing
-    struct token_index *ti = malloc(sizeof(*ti));
-    ti->ts = malloc(sizeof(*ti->ts));
-    ti->n = 0;
-    ti->n = lex(read_ptr, write_ptr, ti, out);
+    state->ti = malloc(sizeof(*state->ti));
+    state->ti->ts = malloc(sizeof(*state->ti->ts));
+    state->ti->n = 0;
+    state->ti->n = lex(read_ptr, state);
     if (out >= verbose)
-        printf("Read %lu tokens.\n", ti->n);
+        printf("Read %lu tokens.\n", state->ti->n);
     if (read_ptr)   fclose(read_ptr);
     if (write_ptr)  fclose(write_ptr);
 
-    if (ti->n) {
+    if (state->ti->n) {
         /*if (out >= verbose) {
-            for (int i = 0; i < ti->n; i++) {
+            for (int i = 0; i < state->ti->n; i++) {
                 printf("Token #%d: \n", i);
-                for (int c = 0; c < strlen(ti->ts[i].val); c++) {
-                    printf("%c", ti->ts[i].val[c]);
+                for (int c = 0; c < strlen(state->ti->ts[i].val); c++) {
+                    printf("%c", state->ti->ts[i].val[c]);
                 }
                 printf("\n");
-                printf("%s (%u)\n", ti->ts[i].val, ti->ts[i].type);
+                printf("%s (%u)\n", state->ti->ts[i].val, state->ti->ts[i].type);
             }
         }*/
         FILE* token_file = fopen("tokens.out", "r");
@@ -309,41 +347,42 @@ int main(int argc, char* argv[]) {
             fclose(token_file);
         }
         // Parsing
-        struct tree* node_tree = parse(token_file, node_file, ti, out);
-        if (node_tree == NULL) { if (out >= standard) printf("Could not parse file.\n"); return 1; }
+        state->output = node_file;
+        state->tree = parse(token_file, state);
+        if (state->tree == NULL) { if (out >= standard) printf("Could not parse file.\n"); return 1; }
         if (out >= verbose) {
-            printf("Nodes: %d\n", node_tree->n);
-            for (int i = 0; i < node_tree->n; i++) {
+            printf("Nodes: %d\n", state->tree->n);
+            for (int i = 0; i < state->tree->n; i++) {
                 printf("%3d: ", i);
-                print_node(node_tree, i, out);
+                print_node(i, state);
                 printf(". Par: %d. Fst: %d. Snd: %d.\n",
-                    node_tree->nodes[i].parent, node_tree->nodes[i].first, node_tree->nodes[i].second);
-                for (int t = 0; t < node_tree->nodes[i].token_count; t++) {
-                    printf("%5d val: %s.\n", t, ti->ts[node_tree->nodes[i].token_indices[t]].val);
+                    state->tree->ns[i].parent, state->tree->ns[i].first, state->tree->ns[i].second);
+                for (int t = 0; t < state->tree->ns[i].token_count; t++) {
+                    printf("%5d val: %s.\n", t, state->ti->ts[state->tree->ns[i].token_indices[t]].val);
                 }
             }
         }
-        /* for (int i = 0; i < node_tree->n; i++) {
-            int indent = node_tree->nodes[i].print_indent;
+        /* for (int i = 0; i < state->nt->n; i++) {
+            int indent = state->nt->nodes[i].print_indent;
             for (int ind = 0; ind < indent; ind++) {
-                    if (ind == node_tree->nodes[node_tree->nodes[i].parent].print_indent) printf("| ");
+                    if (ind == state->nt->nodes[state->nt->nodes[i].parent].print_indent) printf("| ");
                     else printf("  ");
             }
 
             printf("Node #%d. ", i);
-            print_node(node_tree, i, out);
-            printf(". Parent: %d. ", node_tree->nodes[i].parent);
-            printf("1: %d. 2: %d\n", node_tree->nodes[i].first, node_tree->nodes[i].second);
+            print_node(state->nt, i, out);
+            printf(". Parent: %d. ", state->nt->nodes[i].parent);
+            printf("1: %d. 2: %d\n", state->nt->nodes[i].first, state->nt->nodes[i].second);
 
-            if (node_tree->nodes[i].token_count > 0) {
+            if (state->nt->nodes[i].token_count > 0) {
                 for (int ind = 0; ind < indent; ind++) {
-                    if (ind == node_tree->nodes[node_tree->nodes[i].parent].print_indent) printf("| ");
+                    if (ind == state->nt->nodes[state->nt->nodes[i].parent].print_indent) printf("| ");
                     else printf("  ");
                 }
-                for (int j = 0; j < node_tree->nodes[i].token_count; j++) {
+                for (int j = 0; j < state->nt->nodes[i].token_count; j++) {
                     for (int c = 0;
-                        c < strlen(ti->ts[node_tree->nodes[i].token_indices[j]].val); c++) {
-                            putchar(ti->ts[node_tree->nodes[i].token_indices[j]].val[c]);
+                        c < strlen(state->ti->ts[state->nt->nodes[i].token_indices[j]].val); c++) {
+                            putchar(state->ti->ts[state->nt->nodes[i].token_indices[j]].val[c]);
                         }
                         printf(" ");
                 }
@@ -351,7 +390,7 @@ int main(int argc, char* argv[]) {
             }
         }
  */
-        // Evaluating
+        // Evaluastate->ting
         if (token_file) fclose(token_file);
         if (node_file)  fclose(node_file);
         struct ivtable_index* vtable = malloc(sizeof(*vtable));
@@ -363,7 +402,8 @@ int main(int argc, char* argv[]) {
         if (eval_output == NULL && out >= verbose) {
             printf("Could not create \"eval.out\" debugging file. Unnecessary, so proceeding.\n");
         };
-        int result = start_eval(node_tree, 0, ti, eval_output, vtable, ftable, out);
+        state->output = eval_output;
+        int result = start_eval(vtable, ftable, state);
         if (out >= verbose)
             printf("Returned from final evaluation.\n");
         printf("%d\n", result);
@@ -379,8 +419,9 @@ int main(int argc, char* argv[]) {
             printf("Finishing up. Freeing allocated memory.\n");
         free_ftable(ftable);
         free_ivtable(vtable);
-        free_nodes(node_tree);
+        free_nodes(state->tree);
     }
-    free_tokens(ti);
+    free_tokens(state->ti);
+    free(state);
     return 0;
 }

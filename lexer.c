@@ -48,12 +48,12 @@ int read_ahead(FILE* f, char expected, unsigned long* char_number, unsigned long
 }
 
 // Read through the given file, assembling a list of tokens.
-// Also writes its results to an output file.
+// Also writes its results to an state->output file.
 // It is caller's responsibility to open and close file buffers, as
 // well as check for validity.
 // return: Number of tokens found.
-int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
-	//struct Token *ts = &ti->ts;
+int lex(FILE *f, struct state* st) {
+	//struct Token *ts = &state->ti->ts;
 	int sum_sizeof_ts = 0;
 	int sum_sizeof_val = 0;
 
@@ -91,43 +91,43 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 
 			enum e_token string_type;
 			if (strcmp(letter_string,"void")==0)	{
-				fprintf(output, "%3lu: TOKEN: TYPE\n", token_count);
+				fprintf(st->output, "%3lu: TOKEN: TYPE\n", token_count);
 				string_type = t_type;
 			}
 			else if (strcmp(letter_string,"int")==0) {
-				fprintf(output, "%3lu: TOKEN: TYPE\n", token_count);
+				fprintf(st->output, "%3lu: TOKEN: TYPE\n", token_count);
 				string_type = t_type;
 			}
 			else if (strcmp(letter_string,"float")==0) {
-				fprintf(output, "%3lu: TOKEN: TYPE\n", token_count);
+				fprintf(st->output, "%3lu: TOKEN: TYPE\n", token_count);
 				string_type = t_type;
 			}
 			else if (strcmp(letter_string,"return")==0) {
-				fprintf(output, "%3lu: TOKEN: RETURN\n", token_count);
+				fprintf(st->output, "%3lu: TOKEN: RETURN\n", token_count);
 				string_type = t_return;
 			}
 			else if (strcmp(letter_string,"if")==0) {
-				fprintf(output, "%3lu: TOKEN: IF\n", token_count);
+				fprintf(st->output, "%3lu: TOKEN: IF\n", token_count);
 				string_type = t_if;
 			}
 			else if (strcmp(letter_string,"else")==0) {
-				fprintf(output, "%3lu: TOKEN: ELSE\n", token_count);
+				fprintf(st->output, "%3lu: TOKEN: ELSE\n", token_count);
 				string_type = t_else;
 			}
-			else if (strcmp(letter_string,"continue")==0) {
-				fprintf(output, "%3lu: TOKEN: CONTINUE\n", token_count);
-				string_type = t_continue;
+			else if (strcmp(letter_string,"proceed")==0) {
+				fprintf(st->output, "%3lu: TOKEN: PROCEED\n", token_count);
+				string_type = t_proceed;
 			}
 			else {
-				fprintf(output, "%3lu: TOKEN: ID\n", token_count);
+				fprintf(st->output, "%3lu: TOKEN: ID\n", token_count);
 				string_type = t_id;
 			}
-			fprintf(output, " Line#: %lu\n Char#: %lu\n", line_number, char_number);
+			fprintf(st->output, " Line#: %lu\n Char#: %lu\n", line_number, char_number);
 			if (strcmp(letter_string,"return") != 0) {
-				fprintf(output, " Value: %s\n", letter_string);
+				fprintf(st->output, " Value: %s\n", letter_string);
 			}
 
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, letter_string, string_type);
 
 			char_number += char_number_add;
@@ -138,14 +138,14 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 		else if ((c >= 48 && c <= 57)) { // [0-9]
 			char is_floating_type = 0;
 			int negative = 0;
-			if (token_count > 2 && ti->ts[token_count - 1].type == t_binop &&
-					strcmp(ti->ts[token_count - 1].val,"-") == 0 &&
-					ti->ts[token_count - 2].type != t_num_int &&
-					ti->ts[token_count - 2].type != t_num_float &&
-					ti->ts[token_count - 2].type != t_id &&
-					ti->ts[token_count - 2].type != t_par_end) {
+			if (token_count > 2 && st->ti->ts[token_count - 1].type == t_binop &&
+					strcmp(st->ti->ts[token_count - 1].val,"-") == 0 &&
+					st->ti->ts[token_count - 2].type != t_num_int &&
+					st->ti->ts[token_count - 2].type != t_num_float &&
+					st->ti->ts[token_count - 2].type != t_id &&
+					st->ti->ts[token_count - 2].type != t_par_end) {
 				negative = 1;
-				ti->ts = realloc(ti->ts, (token_count - 1) * sizeof(*ti->ts));
+				st->ti->ts = realloc(st->ti->ts, (token_count - 1) * sizeof(*st->ti->ts));
 				token_count --;
 			}
 			char *number_string = malloc(sizeof(char) * (2 + negative));
@@ -182,13 +182,13 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 			number_string[string_len] = '\0';
 			if (out >= verbose) printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
 			if (is_floating_type) {
-				fprintf(output, "%3lu: TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
+				fprintf(st->output, "%3lu: TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
 			}
 			else {
-				fprintf(output, "%3lu: TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
+				fprintf(st->output, "%3lu: TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
 			}
 
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val, line_number,
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val, line_number,
 				char_number, number_string, (is_floating_type) ? t_num_float : t_num_int);
 
 			free(number_string);
@@ -196,132 +196,132 @@ int lex(FILE *f, FILE *output, struct token_index *ti, int out) {
 			continue;
 		}
 		else if (c == '+') {
-			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: BINOP\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, "+", t_binop);
 		}
 		else if (c == '-') {
-			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: BINOP\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, "-", t_binop);
 		}
 		else if (c == '*') {
 			if (read_ahead(f, '*', &char_number, &line_number, out) == 1) {
-				fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: BINOP\n", token_count);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "**", t_binop);
 			}
-			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: BINOP\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, "*", t_binop);
 		}
 		else if (c == '/') {
-			fprintf(output, "%3lu: TOKEN: BINOP\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: BINOP\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, "/", t_binop);
 		}
 		else if (c == '{') {
-			fprintf(output, "%3lu: TOKEN: CURL_BEG\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: CURL_BEG\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, "{", t_curl_beg);
 		}
 		else if (c == '}') {
-			fprintf(output, "%3lu: TOKEN: CURL_END\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: CURL_END\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, "}", t_curl_end);
 		}
 		else if (c == '(') {
-			fprintf(output, "%3lu: TOKEN: PAR_BEG\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: PAR_BEG\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, "(", t_par_beg);
 		}
 		else if (c == ')') {
-			fprintf(output, "%3lu: TOKEN: PAR_END\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: PAR_END\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, ")", t_par_end);
 		}
 		else if (c == ':') {
-			fprintf(output, "%3lu: TOKEN: COLON\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: COLON\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, ":", t_colon);
 		}
 		else if (c == '=') {
 			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
-				fprintf(output, "%3lu: TOKEN: DEQ\n", token_count - 1);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: DEQ\n", token_count - 1);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "==", t_comp);
 			}
 			else if (read_ahead(f, '>', &char_number, &line_number, out) == 1) {
-				fprintf(output, "%3lu: TOKEN: GREATER THAN OR EQUAL\n", token_count - 1);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: GREATER THAN OR EQUAL\n", token_count - 1);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, ">=", t_comp);
 			}
 			else if (read_ahead(f, '<', &char_number, &line_number, out) == 1) {
-				fprintf(output, "%3lu: TOKEN: LESS THAN OR EQUAL\n", token_count - 1);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: LESS THAN OR EQUAL\n", token_count - 1);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "<=", t_comp);
 			}
 			else {
-				fprintf(output, "%3lu: TOKEN: EQ\n", token_count);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: EQ\n", token_count);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "=", t_eq);
 			}
 		}
 		else if (c == ';') {
-			fprintf(output, "%3lu: TOKEN: SEMICOLON\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: SEMICOLON\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, ";", t_semicolon);
 		}
 		else if (c == ',') {
-			fprintf(output, "%3lu: TOKEN: COMMA\n", token_count);
-			init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+			fprintf(st->output, "%3lu: TOKEN: COMMA\n", token_count);
+			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 				line_number, char_number, ",", t_comma);
 		}
 		else if (c == '!') {
 			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
-				fprintf(output, "%3lu: TOKEN: NOT EQUAL\n", token_count);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: NOT EQUAL\n", token_count);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "!=", t_comp);
 			} else {
-				fprintf(output, "%3lu: TOKEN: NOT\n", token_count);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: NOT\n", token_count);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "!", t_not);
 			}
 		}
 		else if (c == '>') {
 			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
-				fprintf(output, "%3lu: TOKEN: GREATER THAN OR EQUAL\n", token_count);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: GREATER THAN OR EQUAL\n", token_count);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, ">=", t_comp);
 			}
 			else {
-				fprintf(output, "%3lu: TOKEN: GREATER THAN\n", token_count);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: GREATER THAN\n", token_count);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, ">", t_comp);
 			}
 		}
 		else if (c == '<') {
 			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
-				fprintf(output, "%3lu: TOKEN: LESS THAN OR EQUAL\n", token_count);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: LESS THAN OR EQUAL\n", token_count);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "<=", t_comp);
 			}
 			else {
-				fprintf(output, "%3lu: TOKEN: LESS THAN\n", token_count);
-				init_token(ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
+				fprintf(st->output, "%3lu: TOKEN: LESS THAN\n", token_count);
+				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "<", t_comp);
 			}
 		}
 		else {
-			if (c != 10 && c != 13) fprintf(output, "UNKNOWN (%d)\n", c);
+			if (c != 10 && c != 13) fprintf(st->output, "UNKNOWN (%d)\n", c);
 			else {
 				c = fgetc(f);
 				continue;
 			}
 		}
-		fprintf(output, " Line#: %lu\n Char#: %lu\n", line_number, char_number);
-		if (ti->ts[token_count - 1].type == t_binop) {
-			fprintf(output, " Value: %s\n", ti->ts[token_count - 1].val);
+		fprintf(st->output, " Line#: %lu\n Char#: %lu\n", line_number, char_number);
+		if (st->ti->ts[token_count - 1].type == t_binop) {
+			fprintf(st->output, " Value: %s\n", st->ti->ts[token_count - 1].val);
 		}
 		char_number += char_number_add;
 		c = fgetc(f);
