@@ -10,6 +10,7 @@ enum e_token {
 	t_type_int,
 	t_type_float,
 	t_type_string,
+	t_type_bool,
 	t_type_void,
 	t_return,
 	t_id,
@@ -27,7 +28,6 @@ enum e_token {
 	t_not,
 	t_neq,
 	t_double_eq,
-	t_bool,
 	t_if,
 	t_else,
 	t_proceed,
@@ -35,7 +35,9 @@ enum e_token {
 	t_less_than,
 	t_geq,
 	t_leq,
-	t_comp
+	t_comp,
+	t_true,
+	t_false
 };
 
 enum e_binop {
@@ -186,6 +188,16 @@ void free_ivtable(struct ivtable_index* vt);
 
 void free_vtable(struct vtable_index* vt);
 
-char* get_val(int n_index, struct state* st);
+char* get_nval(int n_index, struct state* st);
+
+char* get_tval(int t_index, struct token_index* ti);
+
+unsigned long current_line_no(struct state* st);
+
+unsigned long current_char_no(struct state* st);
+
+unsigned long line_no(int i, struct state* st);
+
+unsigned long char_no(int i, struct state* st);
 
 #endif

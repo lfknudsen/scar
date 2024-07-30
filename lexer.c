@@ -102,6 +102,10 @@ int lex(FILE *f, struct state* st) {
 				fprintf(st->output, "%3lu: TOKEN: TYPE\n", token_count);
 				string_type = t_type;
 			}
+			else if (strcmp(letter_string,"bool")==0) {
+				fprintf(st->output, "%3lu: TOKEN: TYPE\n", token_count);
+				string_type = t_type;
+			}
 			else if (strcmp(letter_string,"return")==0) {
 				fprintf(st->output, "%3lu: TOKEN: RETURN\n", token_count);
 				string_type = t_return;
@@ -117,6 +121,14 @@ int lex(FILE *f, struct state* st) {
 			else if (strcmp(letter_string,"proceed")==0) {
 				fprintf(st->output, "%3lu: TOKEN: PROCEED\n", token_count);
 				string_type = t_proceed;
+			}
+			else if (strcmp(letter_string,"true")==0) {
+				fprintf(st->output, "%3lu: TOKEN: TRUE\n", token_count);
+				string_type = t_true;
+			}
+			else if (strcmp(letter_string,"false")==0) {
+				fprintf(st->output, "%3lu: TOKEN: FALSE\n", token_count);
+				string_type = t_false;
 			}
 			else {
 				fprintf(st->output, "%3lu: TOKEN: ID\n", token_count);
@@ -182,10 +194,12 @@ int lex(FILE *f, struct state* st) {
 			number_string[string_len] = '\0';
 			if (out >= verbose) printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
 			if (is_floating_type) {
-				fprintf(st->output, "%3lu: TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
+				fprintf(st->output, "%3lu: TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n",
+				token_count, line_number, char_number, number_string);
 			}
 			else {
-				fprintf(st->output, "%3lu: TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n", token_count, line_number, char_number, number_string);
+				fprintf(st->output, "%3lu: TOKEN: NUM(INT)\n Line#: %lu\n Char#: %lu\n Value: %s\n",
+				token_count, line_number, char_number, number_string);
 			}
 
 			init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val, line_number,

@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <assert.h>
 
 #include "scar.h"
@@ -208,10 +207,16 @@ void fprint_node(int n_index, struct state* state) {
     node_as_text(n_index, state->output, state);
 }
 
-char* get_val(int n_index, struct state* state) {
+char* get_nval(int n_index, struct state* state) {
     if (state->tree->ns[n_index].token_count > 0)
         return state->ti->ts[state->tree->ns[n_index].token_indices[0]].val;
-    return "";
+    return "<unkown>";
+}
+
+char* get_tval(int t_index, struct token_index* ti) {
+    if (ti->n > t_index)
+        return ti->ts[t_index].val;
+    return "<unknown>";
 }
 
 void print_val(FILE* output, struct Val val) {
@@ -232,6 +237,22 @@ void print_val(FILE* output, struct Val val) {
             fprintf(output, "%s", val.value.String);
             return;
     }
+}
+
+unsigned long current_line_no(struct state* st) {
+    return st->ti->ts[st->i].line_number;
+}
+
+unsigned long current_char_no(struct state* st) {
+    return st->ti->ts[st->i].char_number;
+}
+
+unsigned long line_no(int i, struct state* st) {
+    return st->ti->ts[i].line_number;
+}
+
+unsigned long char_no(int i, struct state* st) {
+    return st->ti->ts[i].char_number;
 }
 
 void free_tokens(struct token_index* ti) {

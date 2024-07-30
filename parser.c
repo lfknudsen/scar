@@ -55,7 +55,7 @@ enum e_expr check_value_type(struct state* state) {
         default:
             if (state->out >= standard)
                 printf("Parse error. Expected an operand/expression at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                    current_line_no(state), current_char_no(state));
             return -1;
     }
 }
@@ -129,11 +129,11 @@ int* second(int n_index, struct state* state) {
     return &state->tree->ns[n_index].second;
 }
 
-enum e_nodetype* ntype(int n_index, struct state* state) {
+enum e_nodetype* n_type(int n_index, struct state* state) {
     return &state->tree->ns[n_index].node_type;
 }
 
-int* stype(int n_index, struct state* state) {
+int* s_type(int n_index, struct state* state) {
     return &state->tree->ns[n_index].specific_type;
 }
 
@@ -151,7 +151,8 @@ int add_node(int node_type, int specific_type, struct state* state) {
     state->tree->ns[state->tree->n - 1].first = -1;
     state->tree->ns[state->tree->n - 1].second = -1;
     state->tree->ns[state->tree->n - 1].parent = -1;
-    state->tree->ns[state->tree->n - 1].token_indices = malloc(sizeof(state->tree->ns[state->tree->n - 1].token_indices));
+    state->tree->ns[state->tree->n - 1].token_indices =
+        malloc(sizeof(state->tree->ns[state->tree->n - 1].token_indices));
     state->tree->ns[state->tree->n - 1].print_indent = 0;
     if (state->out >= verbose) {
         printf("Adding new node %d: ", state->tree->n - 1);
@@ -248,14 +249,14 @@ char check_precedence(char* left, char* right) {
 }
 
 char op_precedence(int left, int right, int parent, struct state* state) {
-    char* left_symbol = get_val(left, state);
-    char* right_symbol = get_val(right, state);
+    char* left_symbol = get_nval(left, state);
+    char* right_symbol = get_nval(right, state);
 
     if (state->out >= verbose)
         printf("Symbol order of '%s'  '%s'", left_symbol, right_symbol);
     int result1 = (check_precedence(left_symbol, right_symbol) < 0);
     if (parent >= 0) {
-        char* parent_symbol = get_val(parent, state);
+        char* parent_symbol = get_nval(parent, state);
         if (state->out >= verbose)
             printf(" and '%s'  '%s'.\n", parent_symbol, right_symbol);
         return result1 || (check_precedence(parent_symbol, right_symbol) < 0);
@@ -326,7 +327,7 @@ int state_26(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -367,7 +368,7 @@ int state_25(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -403,7 +404,7 @@ int state_24(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -447,7 +448,7 @@ int state_23(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -486,7 +487,7 @@ int state_22(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -523,7 +524,7 @@ int state_21(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -613,7 +614,7 @@ int state_19(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected an end-parenthesis or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+            current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -659,7 +660,7 @@ int state_18(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected an end-parenthesis, comparison, or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -728,7 +729,7 @@ int state_17(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected an end-parenthesis, comparison, or binary operator at %lu:%lu.\n",
-                state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -761,7 +762,6 @@ int state_16(int n_index, int parent_func, struct state* state) {
     int result = state_17(condition, parent_func, state);
     if (result == -1)
         return -1;
-
 
     result = state_6(condition, n_index, state);
     if (state->out >= verbose)
@@ -808,7 +808,7 @@ int state_15(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a comma, end-parenthesis or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -817,8 +817,8 @@ int state_15(int n_index, int parent_func, struct state* state) {
 // The "tangent" for building the nodes that allow evaluation of a function call argument.
 // Equivalent to the process for binding a value to a variable. Inspired by state_9.
 int state_14(int n_index, int parent_func, struct state* state) {
-    assert(*ntype(n_index, state) == n_expr &&
-           *stype(n_index, state) == e_binop);
+    assert(*n_type(n_index, state) == n_expr &&
+           *s_type(n_index, state) == e_binop);
 
     state->state = 14;
     debug_print(n_index, parent_func, state);
@@ -838,7 +838,7 @@ int state_14(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a comma, end-parenthesis, or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -861,7 +861,7 @@ int state_13(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard) {
             printf("Parse error. Expected comma or closing parentheses to follow the argument\n");
-            printf("during function call at %lu:%lu.\n", state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+            printf("during function call at %lu:%lu.\n", current_line_no(state), current_char_no(state));
         }
     }
     return state_12(n_index, parent_func, state);
@@ -937,7 +937,7 @@ int state_11(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semicolon to finish comparison at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -988,7 +988,7 @@ int state_10(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon, function call, or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1038,7 +1038,7 @@ int state_9(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1082,7 +1082,7 @@ int state_27(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1138,7 +1138,7 @@ int state_8(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1188,7 +1188,7 @@ int state_7(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon or binary operator at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1243,7 +1243,7 @@ int state_6_ret(int n_index, int parent_func, struct state* state)
     {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon to end function body at %lu:%lu.\n",
-                   state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1275,7 +1275,7 @@ int state_6(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a variable type at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1283,7 +1283,7 @@ int state_6(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a variable name at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1362,9 +1362,9 @@ int state_5(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a semi-colon or binary operator to follow variable value \"%s\"(%lu:%lu) at %lu:%lu.\n",
-            state->ti->ts[state->i-2].val, state->ti->ts[state->i-2].line_number,
-            state->ti->ts[state->i-2].char_number, state->ti->ts[state->i].line_number,
-            state->ti->ts[state->i].char_number);
+                state->ti->ts[state->i-2].val, line_no(state->i - 2, state),
+                char_no(state->i - 2, state), current_line_no(state),
+                current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1392,7 +1392,7 @@ int state_4(int n_index, int parent_func, struct state* state) {
         if (check_type(t_semicolon, state)) {
             if (state->out >= standard)
                 printf("Warning: Empty function body at %lu:%lu.\n",
-                state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                    current_line_no(state), current_char_no(state));
             debug_print(n_index, parent_func, state);
             state->i += 1;
             return state->tree->ns[n_index].parent;
@@ -1413,7 +1413,7 @@ int state_4(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a type to begin variable declaration at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1421,7 +1421,7 @@ int state_4(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected a variable name at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1429,7 +1429,7 @@ int state_4(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected an equals symbol for variable declaration at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1458,7 +1458,7 @@ int state_3(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected ')' to proceed function parameters at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1466,7 +1466,7 @@ int state_3(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected '=' to indicate start of function body at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1495,7 +1495,7 @@ int state_2(int n_index, int parent_func, struct state* state) {
         else {
             if (state->out >= standard)
                 printf("Parse error. Expected '=' to precede function body at %lu:%lu.\n",
-                    state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                    current_line_no(state), current_char_no(state));
             debug_print(n_index, parent_func, state);
             return -1;
         }
@@ -1504,7 +1504,7 @@ int state_2(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected parameter type at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1512,7 +1512,7 @@ int state_2(int n_index, int parent_func, struct state* state) {
     else {
         if (state->out >= standard)
             printf("Parse error. Expected parameter name at %lu:%lu.\n",
-            state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                current_line_no(state), current_char_no(state));
         debug_print(n_index, parent_func, state);
         return -1;
     }
@@ -1543,7 +1543,7 @@ int state_1(int n_index, int parent_func, struct state* state) {
         if (!check_type(t_type, state)) {
             if (state->out >= standard)
                 printf("Parse error. Expected function type at %lu:%lu.\n",
-                    state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                    current_line_no(state), current_char_no(state));
             debug_print(n_index, parent_func, state);
             return -1;
         }
@@ -1552,7 +1552,7 @@ int state_1(int n_index, int parent_func, struct state* state) {
         if (!check_type(t_id, state)) {
             if (state->out >= standard)
                 printf("Parse error. Expected function name at %lu:%lu.\n",
-                    state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                    current_line_no(state), current_char_no(state));
             debug_print(n_index, parent_func, state);
             return -1;
         }
@@ -1561,7 +1561,7 @@ int state_1(int n_index, int parent_func, struct state* state) {
         if (!check_type(t_par_beg, state)) {
             if (state->out >= standard)
                 printf("Parse error. Expected '(' to precede function parameters at %lu:%lu.\n",
-                    state->ti->ts[state->i].line_number, state->ti->ts[state->i].char_number);
+                    current_line_no(state), current_char_no(state));
             debug_print(n_index, parent_func, state);
             return -1;
         }
@@ -1579,7 +1579,8 @@ int state_1(int n_index, int parent_func, struct state* state) {
         set_first(fun_declaration, new_param_node_index, state);
 
         if (state->out >= verbose)
-            printf("Added new function: %s %s\n", state->ti->ts[state->i-3].val, state->ti->ts[state->i-2].val);
+            printf("Added new function: %s %s\n",
+                state->ti->ts[state->i-3].val, state->ti->ts[state->i-2].val);
         // TODO: Bind to ftable here, and check for "main" function ID.
         state_2(new_param_node_index, fun_declaration, state);
         new_parent = top_node_index;
