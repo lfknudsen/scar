@@ -381,14 +381,16 @@ int main(int argc, char* argv[]) {
             if (out >= verbose)
                 printf("Could not read \"tokens.out\" debugging file. Unnecessary, so proceeding.\n");
         }
-        FILE* node_file = fopen("nodes.out", "r");
+        FILE* node_file = fopen("nodes.out", "w");
         if (node_file == NULL) {
             if (out >= verbose)
                 printf("Could not create \"nodes.out\" debugging file. Unnecessary, so proceeding.\n");
             fclose(token_file);
+            state->output = NULL;
         }
+        else
+            state->output = node_file;
         // Parsing
-        state->output = node_file;
         state->tree = parse(token_file, state);
         if (state->tree == NULL) { if (out >= standard) printf("Could not parse file.\n"); return 1; }
         if (out >= verbose) {
@@ -431,19 +433,23 @@ int main(int argc, char* argv[]) {
             }
         }
  */
-        // Evaluastate->ting
-        if (token_file) fclose(token_file);
-        if (node_file)  fclose(node_file);
+        // Evaluating
+        if (out >= verbose)
+            printf("About to free token and node files.\n");
+        if (token_file != NULL) fclose(token_file);
+        if (node_file != NULL)  fclose(node_file);
         struct vtable_index* vtable = malloc(sizeof(*vtable));
         struct ftable_index* ftable = malloc(sizeof(*ftable));
         ftable->start_fun_node = 0;
         ftable->n = 0;
         vtable->n = 0;
         FILE* eval_output = fopen("eval.out", "w");
-        if (eval_output == NULL && out >= verbose) {
+        if (eval_output == NULL && state->out >= verbose) {
             printf("Could not create \"eval.out\" debugging file. Unnecessary, so proceeding.\n");
         };
         state->output = eval_output;
+        if (out >= verbose)
+            printf("About to evaluate.\n");
         struct Val result = start_eval(vtable, ftable, state);
         if (out >= verbose)
             printf("Returned from final evaluation.\n");

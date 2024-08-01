@@ -25,7 +25,8 @@ int compare(const size_t base_comp_len, char* name, const char* base_comp,
     #pragma omp critical
     {
         if (!system(comp_cmd)) {
-            printf("\x1b[32mSUCCESS\x1b[m %s\n", name);
+            //printf("\x1b[32mSUCCESS\x1b[m %s\n", name);
+            printf("\x1b[32m\x1b[m %s\n", name);
             success = 1;
         }
         else {
@@ -33,9 +34,11 @@ int compare(const size_t base_comp_len, char* name, const char* base_comp,
                 strlen(name) + strlen(out_ext) + 1);
             sprintf(missing_cmd, "test -e %s%s%s", exp_dirname, name, out_ext);
             if (system(missing_cmd))
-                printf("\x1b[33mMISSING\x1b[m %s\n", name);
+                //printf("\x1b[33mMISSING\x1b[m %s\n", name);
+                printf("\x1b[33m?\x1b[m %s\n", name);
             else
-                printf("\x1b[31mFAILURE\x1b[m %s\n", name);
+                //printf("\x1b[31mFAILURE\x1b[m %s\n", name);
+                printf("\x1b[31m\x1b[m %s\n", name);
             free(missing_cmd);
         }
     }
@@ -351,6 +354,6 @@ int main (int argc, char** argv) {
         }
     }
     free(sorted_programs);
-    printf("%d/%d\n", success_count, n);
+    printf("Successful: %d/%d\n", success_count, n);
     return 0;
 }

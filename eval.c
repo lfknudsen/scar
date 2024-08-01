@@ -160,7 +160,8 @@ int assemble_ftable(int n_index, struct ftable_index* ftable, struct state* stat
 		if (state->out >= verbose)
 			printf("Adding function \"%s\" to ftable.\n",
 				state->ti->ts[state->tree->ns[n_index].token_indices[1]].val);
-		return fbind(ftable, state->ti->ts[state->tree->ns[n_index].token_indices[1]].val, n_index, out);
+		return fbind(ftable, state->ti->ts[state->tree->ns[n_index].token_indices[1]].val, n_index,
+			state->out);
 	}
 	return ftable->n;
 }
@@ -651,7 +652,7 @@ struct Val eval(int n_index, struct vtable_index* vtable, struct ftable_index* f
 			if (state->out >= verbose)
 				printf("Looking for variable named \"%s\" in the vtable.\n",
 					seeking);
-			result = lookup(vtable, seeking, out);
+			result = lookup(vtable, seeking, state->out);
 			return result;
 		case e_val:
 			if (state->tree->ns[n_index].token_count <= 0) {
@@ -695,7 +696,7 @@ struct Val eval(int n_index, struct vtable_index* vtable, struct ftable_index* f
 					return result;
 				}
 				if (n->token_count <= 0) {
-					if (out >= standard) printf("Eval error: Binary operation did not have a token specifying its type.\n");
+					if (state->out >= standard) printf("Eval error: Binary operation did not have a token specifying its type.\n");
 					return result;
 				}
 

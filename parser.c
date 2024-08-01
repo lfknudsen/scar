@@ -200,7 +200,7 @@ char check_node(int idx, int ntype, int stype, struct state* state) {
 /// of the token to be checked doesn't match a token at all.
 int check_type(enum e_token expected, struct state* state) {
     if (state->ti->n <= state->i) {
-        if (out >= standard) printf("Parse error. Code terminates prematurely at %lu:%lu.\n",
+        if (state->out >= standard) printf("Parse error. Code terminates prematurely at %lu:%lu.\n",
         state->ti->ts[state->ti->n - 1].line_number, state->ti->ts[state->ti->n - 1].char_number);
         return 0;
     }
@@ -1605,19 +1605,12 @@ int state_0(int n_index, int parent_func, struct state* state) {
     debug_print(n_index, parent_func, state);
 
     assert(state->tree->n == 0);
-    int top_node_index = add_node(n_prog, 0, state);
+    int top_node_index = add_node(n_prog, n_prog, state);
 
-    return state_1(top_node_index, parent_func, state);
+    return state_1(top_node_index, top_node_index, state);
 }
 
 struct node_tree* parse(FILE* f, struct state* state) {
-    char c = fgetc(f);
-    if (c == EOF) {
-        if (state->out >= standard)
-            printf("Parse error. Empty token file.\n");
-        return NULL;
-    }
-    ungetc(c, f);
     state->i = 0;
     state->tree = malloc(sizeof(*state->tree));
     state->tree->ns = malloc(sizeof(*state->tree->ns));

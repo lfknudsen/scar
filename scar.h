@@ -3,8 +3,6 @@
 
 #define END_STATE 128
 
-//#define VERBOSE 0
-
 enum e_token {
 	t_type,
 	t_type_int,
@@ -170,15 +168,13 @@ struct vtable_index {
 void print_val(FILE* output, struct Val val);
 
 struct state {
-	struct node_tree* tree;
-	struct token_index* ti;
-	FILE* output;
-	int i;
-	enum out_mode out;
-	int state;
+    int i;
+    enum out_mode out;
+    int state;
+    struct node_tree* tree;
+    struct token_index* ti;
+    FILE* output;
 };
-
-int out;
 
 void print_node(int n_index, struct state* st);
 

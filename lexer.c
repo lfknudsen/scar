@@ -170,7 +170,7 @@ int lex(FILE *f, struct state* st) {
 					if (is_floating_type) {
 						is_floating_type ++;
 						char_number_add ++;
-						if (out >= standard) {
+						if (st->out >= standard) {
 							printf("Lexer error. Extra '.' in floating-point number");
 							printf(" at %lu:%lu\n", line_number, char_number + char_number_add);
 						}
@@ -192,7 +192,7 @@ int lex(FILE *f, struct state* st) {
 				}
 			}
 			number_string[string_len] = '\0';
-			if (out >= verbose) printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
+			if (st->out >= verbose) printf("String: \"%s\"\nString length: %d\n", number_string, string_len);
 			if (is_floating_type) {
 				fprintf(st->output, "%3lu: TOKEN: NUM(FLOAT)\n Line#: %lu\n Char#: %lu\n Value: %s\n",
 				token_count, line_number, char_number, number_string);
@@ -220,7 +220,7 @@ int lex(FILE *f, struct state* st) {
 				line_number, char_number, "-", t_binop);
 		}
 		else if (c == '*') {
-			if (read_ahead(f, '*', &char_number, &line_number, out) == 1) {
+			if (read_ahead(f, '*', &char_number, &line_number, st->out) == 1) {
 				fprintf(st->output, "%3lu: TOKEN: BINOP\n", token_count);
 				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "**", t_binop);
@@ -260,17 +260,17 @@ int lex(FILE *f, struct state* st) {
 				line_number, char_number, ":", t_colon);
 		}
 		else if (c == '=') {
-			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
+			if (read_ahead(f, '=', &char_number, &line_number, st->out) == 1) {
 				fprintf(st->output, "%3lu: TOKEN: DEQ\n", token_count - 1);
 				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "==", t_comp);
 			}
-			else if (read_ahead(f, '>', &char_number, &line_number, out) == 1) {
+			else if (read_ahead(f, '>', &char_number, &line_number, st->out) == 1) {
 				fprintf(st->output, "%3lu: TOKEN: GREATER THAN OR EQUAL\n", token_count - 1);
 				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, ">=", t_comp);
 			}
-			else if (read_ahead(f, '<', &char_number, &line_number, out) == 1) {
+			else if (read_ahead(f, '<', &char_number, &line_number, st->out) == 1) {
 				fprintf(st->output, "%3lu: TOKEN: LESS THAN OR EQUAL\n", token_count - 1);
 				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "<=", t_comp);
@@ -292,7 +292,7 @@ int lex(FILE *f, struct state* st) {
 				line_number, char_number, ",", t_comma);
 		}
 		else if (c == '!') {
-			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
+			if (read_ahead(f, '=', &char_number, &line_number, st->out) == 1) {
 				fprintf(st->output, "%3lu: TOKEN: NOT EQUAL\n", token_count);
 				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "!=", t_comp);
@@ -303,7 +303,7 @@ int lex(FILE *f, struct state* st) {
 			}
 		}
 		else if (c == '>') {
-			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
+			if (read_ahead(f, '=', &char_number, &line_number, st->out) == 1) {
 				fprintf(st->output, "%3lu: TOKEN: GREATER THAN OR EQUAL\n", token_count);
 				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, ">=", t_comp);
@@ -315,7 +315,7 @@ int lex(FILE *f, struct state* st) {
 			}
 		}
 		else if (c == '<') {
-			if (read_ahead(f, '=', &char_number, &line_number, out) == 1) {
+			if (read_ahead(f, '=', &char_number, &line_number, st->out) == 1) {
 				fprintf(st->output, "%3lu: TOKEN: LESS THAN OR EQUAL\n", token_count);
 				init_token(st->ti, &token_count, &sum_sizeof_ts, &sum_sizeof_val,
 					line_number, char_number, "<=", t_comp);
@@ -340,6 +340,6 @@ int lex(FILE *f, struct state* st) {
 		char_number += char_number_add;
 		c = fgetc(f);
 	}
-	if (out >= verbose) printf("Total size of tokens: %d\nTotal size of vals:%d\n", sum_sizeof_ts, sum_sizeof_val);
+	if (st->out >= verbose) printf("Total size of tokens: %d\nTotal size of vals:%d\n", sum_sizeof_ts, sum_sizeof_val);
 	return token_count;
 }
