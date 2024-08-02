@@ -5,6 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "timing.h"
+
 // alternative:
 // use diff --skip-trailing-cr --suppress-common-lines
 
@@ -227,9 +229,9 @@ int check_directories() {
     Returns nothing and requires no arguments.
     Options:
     -p          Print comparison between exp/out directories without running scar first.
-    -s          Force sequential operation.
+    -s          Force sequential operation. Slower than default and full parallelisation.
     -r          Run scar on the test software, still piping into /tests/exp/, but without printing results.
-    -f          Parallelise running and printing (meaning not alphabetically).
+    -f          Parallelise running and printing (meaning not alphabetically). Currently slower than default setting.
     -v          Print additional information to stdout.
     -m          Individually test each program that doesn't have an output file in /tests/exp/.
     -l          Check for memory leaks with valgrind -q. Takes longer, which is
@@ -241,6 +243,7 @@ int check_directories() {
                 make a duplicate of the output and put it into /tests/exp/.
 */
 int main (int argc, char** argv) {
+    unsigned long before = microseconds();
     if (system("test -x scar")) {
         if (system("make scar")) {
             printf("Either could not find scar or a Makefile for it, or do have execution privileges.\n");
@@ -310,6 +313,7 @@ int main (int argc, char** argv) {
     struct dirent** sorted_programs;
     int n = scandir("tests/programs", &sorted_programs, filter, alphasort);
 
+    unsigned long before_run = microseconds();
     if (check_missing) return test_missing(sorted_programs, n, prog_dirname, out_dirname,
         exp_dirname, out_ext, base_exec, pipe, exec_len, check_leak);
 
@@ -354,6 +358,8 @@ int main (int argc, char** argv) {
         }
     }
     free(sorted_programs);
-    printf("Successful: %d/%d\n", success_count, n);
+    unsigned long after = microseconds();
+    printf("Successful: %d/%d. Run time: %lums. Total time: %lums.\n",
+        success_count, n, after - before_run, after - before);
     return 0;
 }

@@ -8,6 +8,8 @@
 #include "parser.h"
 #include "eval.h"
 
+#include "timing.h"
+
 /* For now, grammar is as follows:
 Top      	-> Prog
 Prog     	-> FunDecs
@@ -302,24 +304,28 @@ void free_ivtable(struct ivtable_index* vt) {
 
 int fail_input() {
     printf("Scar Compiler usage:\n./scar [option] <filename>\n");
-    printf("Options:\n  -v    Print in-depth log information.\n");
+    printf("Argument order irrelevant.\n");
+    printf("Options (Mutually exclusive):\n  -v    Print in-depth log information.\n");
     printf("  -q    Hide all errors/warnings that would be printed. Result is still printed.\n");
+    printf("  -t    Print timing information along with the result.\n");
     return 1;
 }
 
 int main(int argc, char* argv[]) {
+    unsigned long before = microseconds();
     if (argc <= 1 || strcmp(argv[1],"--help") == 0 || strcmp(argv[1],"-h") == 0 ) {
         return fail_input();
     }
     int out = standard;
-    if (argc >= 3) {
-        if (strcmp(argv[1],"-q") == 0) {
-            out = quiet;
-        } else if (strcmp(argv[1],"-v") == 0) {
-            printf("Verbose output activated.\n");
-            out = verbose;
-        }
+    char* filename;
+
+    for (int i = 1; i < argc; i++) {
+        if      (strcmp(argv[i], "-q") == 0) out            = quiet;
+        else if (strcmp(argv[i], "-t") == 0) out            = timing;
+        else if (strcmp(argv[i], "-v") == 0) out            = verbose;
+        else                                 filename       = argv[i];
     }
+
     if (out >= verbose) {
         printf("Input:");
         for (int i = 0; i < argc; i++) {
@@ -328,10 +334,8 @@ int main(int argc, char* argv[]) {
         printf("\n");
     }
 
+    // Attempt to open program file first directly, then in the programs directory.
     const char* program_dir = "tests/programs/";
-    char* filename;
-    if (argc == 2) filename = argv[1];
-    else if (argc >= 3) filename = argv[2];
     FILE* read_ptr = fopen(filename, "r");
     if (read_ptr == NULL) {
         char retry_dir[strlen(program_dir) + strlen(filename) + 1];
@@ -339,14 +343,14 @@ int main(int argc, char* argv[]) {
         read_ptr = fopen(retry_dir, "r");
         if (read_ptr == NULL) {
             if (out >= standard)
-                printf("Program file not found. Please double-check the name and read permission.\n");
+                printf("\x1b[31mError:\x1b[m Program file not found. Please double-check the name and read permission.\n");
             return fail_input();
         }
     }
     FILE* write_ptr = fopen("tokens.out", "w");
     if (write_ptr == NULL) {
         if (out >= verbose) {
-            printf("Could not create \"tokens.out\" debugging file. Unnecessary, so proceeding.\n");
+            printf("\x1b[33mNote:\x1b[m Could not create \"tokens.out\" debugging file. Unnecessary, so proceeding.\n");
         }
         fclose(read_ptr);
     }
@@ -355,13 +359,20 @@ int main(int argc, char* argv[]) {
     state->out = out;
     state->output = write_ptr;
 
+    unsigned long parse_before;
+    unsigned long parse_after;
+    unsigned long eval_before;
+    unsigned long eval_after;
+
     // Lexing
     state->ti = malloc(sizeof(*state->ti));
     state->ti->ts = malloc(sizeof(*state->ti->ts));
     state->ti->n = 0;
+    unsigned long lex_before = microseconds();
     state->ti->n = lex(read_ptr, state);
+    unsigned long lex_after = microseconds();
     if (out >= verbose)
-        printf("Read %lu tokens.\n", state->ti->n);
+        printf("\x1b[33mLex time: %lums. Read %lu tokens.\x1b[m\n", lex_after - lex_before, state->ti->n);
     if (read_ptr)   fclose(read_ptr);
     if (write_ptr)  fclose(write_ptr);
 
@@ -379,21 +390,29 @@ int main(int argc, char* argv[]) {
         FILE* token_file = fopen("tokens.out", "r");
         if (token_file == NULL) {
             if (out >= verbose)
-                printf("Could not read \"tokens.out\" debugging file. Unnecessary, so proceeding.\n");
+                printf("\x1b[33mNote:\x1b[m Could not read \"tokens.out\" debugging file. Unnecessary, so proceeding.\n");
         }
         FILE* node_file = fopen("nodes.out", "w");
         if (node_file == NULL) {
             if (out >= verbose)
-                printf("Could not create \"nodes.out\" debugging file. Unnecessary, so proceeding.\n");
+                printf("\x1b[33mNote:\x1b[m Could not create \"nodes.out\" debugging file. Unnecessary, so proceeding.\n");
             fclose(token_file);
             state->output = NULL;
         }
         else
             state->output = node_file;
+
         // Parsing
+        parse_before = microseconds();
         state->tree = parse(token_file, state);
-        if (state->tree == NULL) { if (out >= standard) printf("Could not parse file.\n"); return 1; }
+        parse_after = microseconds();
+        if (state->tree == NULL) {
+            if (out >= standard)
+                printf("Could not parse file.\n");
+            return 1;
+        }
         if (out >= verbose) {
+            printf("\x1b[33mParse time: %lums.\x1b[m\n", parse_after - parse_before);
             printf("Nodes: %d\n", state->tree->n);
             for (int i = 0; i < state->tree->n; i++) {
                 printf("%3d: ", i);
@@ -445,14 +464,14 @@ int main(int argc, char* argv[]) {
         vtable->n = 0;
         FILE* eval_output = fopen("eval.out", "w");
         if (eval_output == NULL && state->out >= verbose) {
-            printf("Could not create \"eval.out\" debugging file. Unnecessary, so proceeding.\n");
+            printf("\x1b[33mNote:\x1b[m Could not create \"eval.out\" debugging file. Unnecessary, so proceeding.\n");
         };
         state->output = eval_output;
-        if (out >= verbose)
-            printf("About to evaluate.\n");
+        eval_before = microseconds();
         struct Val result = start_eval(vtable, ftable, state);
+        eval_after = microseconds();
         if (out >= verbose)
-            printf("Returned from final evaluation.\n");
+            printf("\x1b[33mEval time: %lums.\x1b[m\n", eval_after - eval_before);
         print_val(stdout, result);
         printf("\n");
         if (eval_output) fclose(eval_output);
@@ -471,5 +490,11 @@ int main(int argc, char* argv[]) {
     }
     free_tokens(state->ti);
     free(state);
+    unsigned long after = microseconds();
+    if (out >= timing) {
+        printf("Total time: %lums. Lex: %lums. Parse: %lums. Eval: %lums.\n",
+            after - before, lex_after - lex_before, parse_after - parse_before,
+            eval_after - eval_before);
+    }
     return 0;
 }

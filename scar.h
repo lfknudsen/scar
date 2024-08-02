@@ -133,6 +133,7 @@ enum error_codes {
 enum out_mode {
     quiet,
     standard,
+    timing,
     verbose
 };
 
