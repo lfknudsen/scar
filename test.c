@@ -215,6 +215,49 @@ int check_directories() {
     return can_run;
 }
 
+// print one character per bit.
+void to_binary(char number) {
+    char* result = malloc(sizeof(number) * 8); //we're not printing as string, so no need for \0.
+    unsigned char c = 0;
+    for (c = 0; c < sizeof(number) * 8; c ++) {
+        unsigned char num = number >> (sizeof(number) * 8 - c);
+        result[c] = num & 1;
+    }
+
+    for (c = 0; c < sizeof(number) * 8; c++) {
+        printf("%u", result[c]);
+    }
+    return;
+}
+
+char is_v(char options) {
+    return options & 1;
+}
+
+char is_p(char options) {
+    return options >> (sizeof(options) * 8 - 1) && 1;
+}
+
+char is_r(char options) {
+    return options >> (sizeof(options) * 8 - 2) && 1;
+}
+
+char is_s(char options) {
+    return options >> (sizeof(options) * 8 - 3) && 1;
+}
+
+char is_f(char options) {
+    return options >> (sizeof(options) * 8 - 4) && 1;
+}
+
+char is_m(char options) {
+    return options >> (sizeof(options) * 8 - 5) && 1;
+}
+
+char is_l(char options) {
+    return options >> (sizeof(options) * 8 - 6) && 1;
+}
+
 /*
     Test program for the scar interpreter.
     Runs the ./scar program from the command line for each entry in /tests/programs.
@@ -260,13 +303,17 @@ int main (int argc, char** argv) {
     const size_t base_comp_len = strlen(base_comp) + strlen(out_dirname) +
         strlen(exp_dirname) + strlen(out_ext) + strlen(out_ext) + 1;
 
+    /*
     char skip_run       = 0;
     char sequential     = 0;
     char verbosity      = 0;
     char check_missing  = 0;
     char check_leak     = 0;
+    */
     int  target         = 0;
 
+    unsigned char options = 0;
+    /*
     for (int i = 1; i < argc; i++) {
         if      (strcmp(argv[i], "-v") == 0) verbosity      =  1;
         else if (strcmp(argv[i], "-p") == 0) skip_run       =  1;
@@ -277,7 +324,81 @@ int main (int argc, char** argv) {
         else if (strcmp(argv[i], "-l") == 0) check_leak     =  1;
         else                                 target         =  i;
     }
+    */
+    if (argc > 1) {
+        int i = 1;
+        do {
+            if (argv[i][0] == '-') {
+                switch (argv[i][1]) {
+                    case 'v':
+                        options = options | (unsigned char)   1;
+                        break;
+                    case 'p':
+                        options = options | (unsigned char)   2;
+                        break;
+                    case 'r':
+                        options = options | (unsigned char)   4;
+                        break;
+                    case 's':
+                        options = options | (unsigned char)   8;
+                        break;
+                    case 'f':
+                        options = options | (unsigned char)   16;
+                        break;
+                    case 'm':
+                        options = options | (unsigned char)   32;
+                        break;
+                    case 'l':
+                        options = options | (unsigned char)   64;
+                        break;
+                }
+            }
+            else
+                target = i;
+            i ++;
+        } while (i < argc);
+    }
+        /*
+        if      (strcmp(argv[i], "-v") == 0) options = options | (unsigned char)   1;
+        else if (strcmp(argv[i], "-p") == 0) options = options | (unsigned char)   2;
+        else if (strcmp(argv[i], "-r") == 0) options = options | (unsigned char)   4;
+        else if (strcmp(argv[i], "-s") == 0) options = options | (unsigned char)   8;
+        else if (strcmp(argv[i], "-f") == 0) options = options | (unsigned char)  16;
+        else if (strcmp(argv[i], "-m") == 0) options = options | (unsigned char)  32;
+        else if (strcmp(argv[i], "-l") == 0) options = options | (unsigned char) 128;
+        else                                 target            =   i;
+        */
 
+
+    // -v -l -p => 1000 0011
+    /*
+    printf("Options: ");
+    to_binary(options);
+    printf("\n");
+    return 0;
+    */
+
+    if (is_l(options) && !system("test -x valgrind")) {
+        printf("Valgrind not found on PATH. Running without.\n");
+        options = options | (unsigned char) 128;
+    }
+
+    if (is_m(options)) target = 0;
+
+    if (is_v(options) == 1) {
+        printf("Printing more information.\n");
+        if      (is_p(options) && !is_r(options)) printf("Skipping interpreting. Just printing comparison.\n");
+        else if (!is_p(options) && is_r(options)) printf("Skipping stdout printing. Just running tests.\n");
+        else                                      printf("Running tests as normal.\n");
+        if      (is_s(options) && !is_f(options)) printf("Running tests in the same thread.\n");
+        else if (!is_s(options) && is_f(options)) printf("Parallelising testing and printing.\n");
+        else                                      printf("Parallelising running but not printing.\n");
+        if      (is_l(options))                   printf("Checking memory leakage with Valgrind.\n");
+        if      (is_m(options))                   printf("Individually testing all programs with missing expected outputs.\n");
+        else if (target   >  0)                   printf("Testing only %s\n", argv[target]);
+    }
+
+    /*
     if (check_leak && !system("test -x valgrind")) {
         printf("Valgrind not found on PATH. Running without.\n");
         check_leak = 0;
@@ -297,27 +418,28 @@ int main (int argc, char** argv) {
         if      (check_missing)    printf("Individually testing all programs with missing expected outputs.\n");
         else if (target      >  0) printf("Testing only %s\n", argv[target]);
     }
+    */
 
     if (target)
         return single_test(argv[target], prog_dirname, out_dirname, exp_dirname,
-            out_ext, base_exec, pipe, exec_len, check_leak);
+            out_ext, base_exec, pipe, exec_len, is_l(options));
 
     int success_count = 0;
 
     struct dirent** sorted_programs;
     int n = scandir("tests/programs", &sorted_programs, filter, alphasort);
 
-    if (check_missing) return test_missing(sorted_programs, n, prog_dirname, out_dirname,
-        exp_dirname, out_ext, base_exec, pipe, exec_len, check_leak);
+    if (is_m(options)) return test_missing(sorted_programs, n, prog_dirname, out_dirname,
+        exp_dirname, out_ext, base_exec, pipe, exec_len, is_l(options));
 
     volatile int memory_leak = 0;
-    if (skip_run != 1) {
-        if (sequential == -1) {
+    if (!is_p(options)) {
+        if (is_f(options)) {
             #pragma omp parallel for reduction(+ : success_count)
             for (int i = 0; i < n; i++) {
                 if (memory_leak == 0) {
                     int memory_safe = run(out_dirname, sorted_programs[i]->d_name, out_ext, prog_dirname,
-                        base_exec, pipe, exec_len, check_leak);
+                        base_exec, pipe, exec_len, is_l(options));
                     success_count += compare(base_comp_len, sorted_programs[i]->d_name,
                         base_comp, out_dirname, out_ext, exp_dirname);
                     free(sorted_programs[i]);
@@ -330,11 +452,11 @@ int main (int argc, char** argv) {
             }
         }
         else {
-            #pragma omp parallel for if (sequential == 0)
+            #pragma omp parallel for if (!is_s(options) && !is_f(options))
             for (int i = 0; i < n; i++) {
                 if (memory_leak == 0) {
                     int memory_safe = run(out_dirname, sorted_programs[i]->d_name, out_ext,
-                        prog_dirname, base_exec, pipe, exec_len, check_leak);
+                        prog_dirname, base_exec, pipe, exec_len, is_l(options));
                     if (memory_safe == 0)
                         memory_leak = 1;
                 }
@@ -343,7 +465,7 @@ int main (int argc, char** argv) {
             }
         }
     }
-    if (sequential != -1) {
+    if (!is_f(options)) {
         for (int i = 0; i < n; i++) {
             success_count += compare(base_comp_len, sorted_programs[i]->d_name,
                 base_comp, out_dirname, out_ext, exp_dirname);
