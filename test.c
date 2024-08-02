@@ -223,11 +223,11 @@ int check_directories() {
     there's little benefit currently), then prints alphabetically.
     Returns nothing and requires no arguments.
     Options:
-    -p          Print comparison between exp/out directories without running scar first.
-    -s          Force sequential operation.
-    -r          Run scar on the test software, still piping into /tests/exp/, but without printing results.
-    -f          Parallelise running and printing (meaning not alphabetically).
     -v          Print additional information to stdout.
+    -p          Print comparison between exp/out directories without running scar first.
+    -r          Run scar on the test software, still piping into /tests/exp/, but without printing results.
+    -s          Force sequential operation.
+    -f          Parallelise running and printing (meaning not alphabetically).
     -m          Individually test each program that doesn't have an output file in /tests/exp/.
     -l          Check for memory leaks with valgrind -q. Takes longer, which is
                 especially noticeable without the -f option to print each result immediately.
