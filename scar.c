@@ -125,6 +125,27 @@ Exp3        -> FunCall
 Exp3		-> Val
 
 */
+/*
+ * Still need to implement:
+ * if...else...
+ * while( Exps ) Stats loop
+ * print()
+ * command line arguments
+ * && and ||
+ * << and >>
+ * ++ and --
+ * +=, -=, *=, and /=
+ * !
+ * ^
+ * %
+ * "..."
+ * '.'
+ * arrays
+ * tuples
+ * sqrt()
+ * typeof()
+ * proper control flow scopes concerning variable declarations vs. updates within if/else bodies.
+*/
 
 void node_as_text(int n_index, FILE* output, struct state* st) {
     if (output == NULL) {
@@ -313,17 +334,17 @@ int fail_input() {
 
 int main(int argc, char* argv[]) {
     unsigned long before = microseconds();
-    if (argc <= 1 || strcmp(argv[1],"--help") == 0 || strcmp(argv[1],"-h") == 0 ) {
+    if (argc <= 1 || !strcmp(argv[1],"--help")  || !strcmp(argv[1],"-h")  ) {
         return fail_input();
     }
     int out = standard;
-    char* filename;
+    char* filename = "";
 
     for (int i = 1; i < argc; i++) {
-        if      (strcmp(argv[i], "-q") == 0) out            = quiet;
-        else if (strcmp(argv[i], "-t") == 0) out            = timing;
-        else if (strcmp(argv[i], "-v") == 0) out            = verbose;
-        else                                 filename       = argv[i];
+        if      (!strcmp(argv[i], "-q")) out            = quiet;
+        else if (!strcmp(argv[i], "-t")) out            = timing;
+        else if (!strcmp(argv[i], "-v")) out            = verbose;
+        else if (filename[0] == '\0') filename       = argv[i];
     }
 
     if (out >= verbose) {
@@ -332,6 +353,12 @@ int main(int argc, char* argv[]) {
             printf(" %s", argv[i]);
         }
         printf("\n");
+    }
+
+    if (filename[0] == '\0') {
+        if (out >= standard)
+            printf("No filename found in input arguments.\n");
+        return fail_input();
     }
 
     // Attempt to open program file first directly, then in the programs directory.
@@ -359,10 +386,10 @@ int main(int argc, char* argv[]) {
     state->out = out;
     state->output = write_ptr;
 
-    unsigned long parse_before;
-    unsigned long parse_after;
-    unsigned long eval_before;
-    unsigned long eval_after;
+    unsigned long parse_before = -1;
+    unsigned long parse_after  = -1;
+    unsigned long eval_before  = -1;
+    unsigned long eval_after   = -1;
 
     // Lexing
     state->ti = malloc(sizeof(*state->ti));
@@ -372,7 +399,7 @@ int main(int argc, char* argv[]) {
     state->ti->n = lex(read_ptr, state);
     unsigned long lex_after = microseconds();
     if (out >= verbose)
-        printf("\x1b[33mLex time: %lums. Read %lu tokens.\x1b[m\n", lex_after - lex_before, state->ti->n);
+        printf("\x1b[33mLex time: %luus. Read %lu tokens.\x1b[m\n", lex_after - lex_before, state->ti->n);
     if (read_ptr)   fclose(read_ptr);
     if (write_ptr)  fclose(write_ptr);
 
@@ -412,7 +439,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         if (out >= verbose) {
-            printf("\x1b[33mParse time: %lums.\x1b[m\n", parse_after - parse_before);
+            printf("\x1b[33mParse time: %luus.\x1b[m\n", parse_after - parse_before);
             printf("Nodes: %d\n", state->tree->n);
             for (int i = 0; i < state->tree->n; i++) {
                 printf("%3d: ", i);
@@ -471,7 +498,7 @@ int main(int argc, char* argv[]) {
         struct Val result = start_eval(vtable, ftable, state);
         eval_after = microseconds();
         if (out >= verbose)
-            printf("\x1b[33mEval time: %lums.\x1b[m\n", eval_after - eval_before);
+            printf("\x1b[33mEval time: %luus.\x1b[m\n", eval_after - eval_before);
         print_val(stdout, result);
         printf("\n");
         if (eval_output) fclose(eval_output);
@@ -492,7 +519,7 @@ int main(int argc, char* argv[]) {
     free(state);
     unsigned long after = microseconds();
     if (out >= timing) {
-        printf("Total time: %lums. Lex: %lums. Parse: %lums. Eval: %lums.\n",
+        printf("Total time: %luus. Lex: %luus. Parse: %luus. Eval: %luus.\n",
             after - before, lex_after - lex_before, parse_after - parse_before,
             eval_after - eval_before);
     }

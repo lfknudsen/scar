@@ -7,6 +7,16 @@
 
 #include "timing.h"
 
+struct constants {
+    const char* base_exec   ;
+    const char* pipe        ;
+    const char* base_comp   ;
+    const char* prog_dirname;
+    const char* out_dirname ;
+    const char* exp_dirname ;
+    const char* out_ext     ;
+};
+
 // alternative:
 // use diff --skip-trailing-cr --suppress-common-lines
 
@@ -16,14 +26,13 @@ int filter(const struct dirent* a) {
 }
 
 // Execute the "cmp" command on two files with identical names in separate directories.
-int compare(const size_t base_comp_len, char* name, const char* base_comp,
-    const char* out_dirname, const char* out_ext, const char *exp_dirname)
+int compare(struct constants* c, const size_t base_comp_len, char* name)
 {
     int success = 0;
     char* comp_cmd = malloc(base_comp_len + strlen(name) * 2 + 1);
-    sprintf(comp_cmd, "%s%s%s%s %s%s%s", base_comp, out_dirname,
-        name, out_ext, exp_dirname,
-        name, out_ext);
+    sprintf(comp_cmd, "%s%s%s%s %s%s%s", c->base_comp, c->out_dirname,
+        name, c->out_ext, c->exp_dirname,
+        name, c->out_ext);
     #pragma omp critical
     {
         if (!system(comp_cmd)) {
@@ -32,9 +41,9 @@ int compare(const size_t base_comp_len, char* name, const char* base_comp,
             success = 1;
         }
         else {
-            char* missing_cmd = malloc(strlen("test -e ") + strlen(exp_dirname) +
-                strlen(name) + strlen(out_ext) + 1);
-            sprintf(missing_cmd, "test -e %s%s%s", exp_dirname, name, out_ext);
+            char* missing_cmd = malloc(strlen("test -e ") + strlen(c->exp_dirname) +
+                strlen(name) + strlen(c->out_ext) + 1);
+            sprintf(missing_cmd, "test -e %s%s%s", c->exp_dirname, name, c->out_ext);
             if (system(missing_cmd))
                 //printf("\x1b[33mMISSING\x1b[m %s\n", name);
                 printf("\x1b[33m?\x1b[m %s\n", name);
@@ -48,15 +57,12 @@ int compare(const size_t base_comp_len, char* name, const char* base_comp,
     return success;
 }
 
-int run(const char* out_dirname, char* name, const char* out_ext,
-        const char* prog_dirname, const char* base_exec, const char* pipe, const size_t exec_len,
-        char check_leak)
-{
+int run(struct constants* c, char* name, const size_t exec_len, char check_leak) {
     char memory_safe = 1;
     char* command;
     if (check_leak) {
         command = malloc(strlen("valgrind -q ") + exec_len + strlen(name) * 2);
-        sprintf(command, "valgrind -q %s%s%s%s%s%s%s", base_exec, prog_dirname, name, pipe, out_dirname, name, out_ext);
+        sprintf(command, "valgrind -q %s%s%s%s%s%s%s", c->base_exec, c->prog_dirname, name, c->pipe, c->out_dirname, name, c->out_ext);
         #pragma omp critical
         {
             if (system(command)) {
@@ -66,7 +72,7 @@ int run(const char* out_dirname, char* name, const char* out_ext,
     }
     else {
         command = malloc(exec_len + strlen(name) * 2);
-        sprintf(command, "%s%s%s%s%s%s%s", base_exec, prog_dirname, name, pipe, out_dirname, name, out_ext);
+        sprintf(command, "%s%s%s%s%s%s%s", c->base_exec, c->prog_dirname, name, c->pipe, c->out_dirname, name, c->out_ext);
         #pragma omp critical
         {
             system(command);
@@ -76,15 +82,12 @@ int run(const char* out_dirname, char* name, const char* out_ext,
     return memory_safe;
 }
 
-int single_test(char* name, const char* prog_dirname, const char* out_dirname,
-    const char* exp_dirname, const char* out_ext, const char* base_exec, const char* pipe,
-    size_t exec_len, char check_leak)
-{
+int single_test(struct constants* c, char* name, size_t exec_len, char check_leak) {
     char test_target_exists = 0;
     char included_prog_dir = 0;
 
-    char* test_cmd = malloc(strlen("test -e ") + strlen(prog_dirname) + strlen(name) + 1);
-    sprintf(test_cmd, "test -e %s%s", prog_dirname, name);
+    char* test_cmd = malloc(strlen("test -e ") + strlen(c->prog_dirname) + strlen(name) + 1);
+    sprintf(test_cmd, "test -e %s%s", c->prog_dirname, name);
     if (system(test_cmd)) {
         test_cmd = malloc(strlen("test -e ") + strlen(name) + 1);
         sprintf(test_cmd, "test -e %s", name);
@@ -109,45 +112,45 @@ int single_test(char* name, const char* prog_dirname, const char* out_dirname,
             system(test_cmd);
         }
         else {
-            test_cmd = malloc(strlen("cat ") + strlen(prog_dirname) + strlen(name) + 1);
-            sprintf(test_cmd, "cat %s%s", prog_dirname, name);
+            test_cmd = malloc(strlen("cat ") + strlen(c->prog_dirname) + strlen(name) + 1);
+            sprintf(test_cmd, "cat %s%s", c->prog_dirname, name);
             system(test_cmd);
         }
         printf("\n");
 
-        run(out_dirname, name, out_ext, prog_dirname, base_exec, pipe, exec_len, check_leak);
+        run(c, name, exec_len, check_leak);
 
-        test_cmd = malloc(strlen("cat ") + strlen(out_dirname) +
-            strlen(name) + strlen(out_ext) + 1);
-        sprintf(test_cmd, "cat %s%s%s", out_dirname, name, out_ext);
+        test_cmd = malloc(strlen("cat ") + strlen(c->out_dirname) +
+            strlen(name) + strlen(c->out_ext) + 1);
+        sprintf(test_cmd, "cat %s%s%s", c->out_dirname, name, c->out_ext);
 
         printf("\n----------------OUTPUT----------------\n");
         system(test_cmd);
         printf("--------------------------------------\n");
 
-        test_cmd = malloc(strlen("test -e ") + strlen(exp_dirname) +
-            strlen(name) + strlen(out_ext) + 1);
-        sprintf(test_cmd, "test -e %s%s%s", exp_dirname, name, out_ext);
+        test_cmd = malloc(strlen("test -e ") + strlen(c->exp_dirname) +
+            strlen(name) + strlen(c->out_ext) + 1);
+        sprintf(test_cmd, "test -e %s%s%s", c->exp_dirname, name, c->out_ext);
 
         if (!system(test_cmd)) {
-            test_cmd = malloc(strlen("cat ") + strlen(exp_dirname) +
-                strlen(name) + strlen(out_ext) + 1);
-            sprintf(test_cmd, "cat %s%s%s", exp_dirname, name, out_ext);
+            test_cmd = malloc(strlen("cat ") + strlen(c->exp_dirname) +
+                strlen(name) + strlen(c->out_ext) + 1);
+            sprintf(test_cmd, "cat %s%s%s", c->exp_dirname, name, c->out_ext);
             printf("\n\n---------------EXPECTED---------------\n");
             system(test_cmd);
             printf("--------------------------------------\n");
 
-            test_cmd = malloc(strlen("cmp -s ") + strlen(exp_dirname) + strlen(name) * 2 + strlen(out_dirname) + strlen(out_ext) * 2 + 1);
-            sprintf(test_cmd, "cmp -s %s%s%s%s%s%s", exp_dirname, name, out_ext, out_dirname, name, out_ext);
+            test_cmd = malloc(strlen("cmp -s ") + strlen(c->exp_dirname) + strlen(name) * 2 + strlen(c->out_dirname) + strlen(c->out_ext) * 2 + 1);
+            sprintf(test_cmd, "cmp -s %s%s%s%s%s%s", c->exp_dirname, name, c->out_ext, c->out_dirname, name, c->out_ext);
             if (!system(test_cmd)) {
                 printf("Create expectation file from output? [y/N]\n");
                 char input = getchar();
                 if (input == 'y') {
-                    test_cmd = malloc(strlen("cp ") + strlen(out_dirname) +
-                        strlen(name) + strlen(out_ext) + 1 + strlen(exp_dirname) +
-                        strlen(name) + strlen(out_ext) + 1);
-                    sprintf(test_cmd, "cp %s%s%s %s%s%s", out_dirname, name, out_ext,
-                        exp_dirname, name, out_ext);
+                    test_cmd = malloc(strlen("cp ") + strlen(c->out_dirname) +
+                        strlen(name) + strlen(c->out_ext) + 1 + strlen(c->exp_dirname) +
+                        strlen(name) + strlen(c->out_ext) + 1);
+                    sprintf(test_cmd, "cp %s%s%s %s%s%s", c->out_dirname, name, c->out_ext,
+                        c->exp_dirname, name, c->out_ext);
                     if (!system(test_cmd))
                         printf("Created expectation file.\n");
                     else
@@ -160,11 +163,11 @@ int single_test(char* name, const char* prog_dirname, const char* out_dirname,
             printf("Create expectation file from output? [y/N]\n");
             char input = getchar();
             if (input == 'y') {
-                test_cmd = malloc(strlen("cp ") + strlen(out_dirname) +
-                    strlen(name) + strlen(out_ext) + 1 + strlen(exp_dirname) +
-                    strlen(name) + strlen(out_ext) + 1);
-                sprintf(test_cmd, "cp %s%s%s %s%s%s", out_dirname, name, out_ext,
-                    exp_dirname, name, out_ext);
+                test_cmd = malloc(strlen("cp ") + strlen(c->out_dirname) +
+                    strlen(name) + strlen(c->out_ext) + 1 + strlen(c->exp_dirname) +
+                    strlen(name) + strlen(c->out_ext) + 1);
+                sprintf(test_cmd, "cp %s%s%s %s%s%s", c->out_dirname, name, c->out_ext,
+                    c->exp_dirname, name, c->out_ext);
                 if (!system(test_cmd))
                     printf("Created expectation file.\n");
                 else
@@ -176,16 +179,13 @@ int single_test(char* name, const char* prog_dirname, const char* out_dirname,
     return 0;
 }
 
-int test_missing(struct dirent** progs, int n, const char* prog_dirname,
-        const char* out_dirname, const char* exp_dirname, const char* out_ext,
-        const char* base_exec, const char* pipe, size_t exec_len, char check_leak) {
+int test_missing(struct constants* c, struct dirent** progs, int n, size_t exec_len, char check_leak) {
     for (int i = 0; i < n; i++) {
         char test_cmd
-            [strlen("test -e ") + strlen(exp_dirname) + strlen(progs[i]->d_name) + strlen(out_ext) + 1];
-        sprintf(test_cmd, "test -e %s%s%s", exp_dirname, progs[i]->d_name, out_ext);
+            [strlen("test -e ") + strlen(c->exp_dirname) + strlen(progs[i]->d_name) + strlen(c->out_ext) + 1];
+        sprintf(test_cmd, "test -e %s%s%s", c->exp_dirname, progs[i]->d_name, c->out_ext);
         if (system(test_cmd)) {
-            single_test(progs[i]->d_name, prog_dirname, out_dirname,
-                exp_dirname, out_ext, base_exec, pipe, exec_len, check_leak);
+            single_test(c, progs[i]->d_name, exec_len, check_leak);
             getchar();
         }
     }
@@ -253,18 +253,20 @@ int main (int argc, char** argv) {
 
     if (!check_directories()) return 1;
 
-    const char* base_exec     = "./scar -q "; //Add -q to not report anything.
-    const char* pipe          = " > ";
-    const char* base_comp     = "cmp -s "; //Add -s to not report anything.
-    const char* prog_dirname  = "./tests/programs/";
-    const char* out_dirname   = "./tests/out/";
-    const char* exp_dirname   = "./tests/exp/";
-    const char* out_ext       = ".out";
+    struct constants c = {
+        c.base_exec     = "./scar -q ", //Add -q to not report anything.
+        c.pipe          = " > ",
+        c.base_comp     = "cmp -s ", //Add -s to not report anything.
+        c.prog_dirname  = "./tests/programs/",
+        c.out_dirname   = "./tests/out/",
+        c.exp_dirname   = "./tests/exp/",
+        c.out_ext       = ".out"
+    };
 
-    const size_t exec_len = strlen(base_exec) + strlen(prog_dirname) +
-        strlen(pipe) + strlen(out_dirname) + strlen(out_ext) + 1;
-    const size_t base_comp_len = strlen(base_comp) + strlen(out_dirname) +
-        strlen(exp_dirname) + strlen(out_ext) + strlen(out_ext) + 1;
+    const size_t exec_len = strlen(c.base_exec) + strlen(c.prog_dirname) +
+        strlen(c.pipe) + strlen(c.out_dirname) + strlen(c.out_ext) + 1;
+    const size_t base_comp_len = strlen(c.base_comp) + strlen(c.out_dirname) +
+        strlen(c.exp_dirname) + strlen(c.out_ext) + strlen(c.out_ext) + 1;
 
     char skip_run       = 0;
     char sequential     = 0;
@@ -305,8 +307,7 @@ int main (int argc, char** argv) {
     }
 
     if (target)
-        return single_test(argv[target], prog_dirname, out_dirname, exp_dirname,
-            out_ext, base_exec, pipe, exec_len, check_leak);
+        return single_test(&c, argv[target], exec_len, check_leak);
 
     int success_count = 0;
 
@@ -314,8 +315,7 @@ int main (int argc, char** argv) {
     int n = scandir("tests/programs", &sorted_programs, filter, alphasort);
 
     unsigned long before_run = microseconds();
-    if (check_missing) return test_missing(sorted_programs, n, prog_dirname, out_dirname,
-        exp_dirname, out_ext, base_exec, pipe, exec_len, check_leak);
+    if (check_missing) return test_missing(&c, sorted_programs, n, exec_len, check_leak);
 
     volatile int memory_leak = 0;
     if (skip_run != 1) {
@@ -323,10 +323,8 @@ int main (int argc, char** argv) {
             #pragma omp parallel for reduction(+ : success_count)
             for (int i = 0; i < n; i++) {
                 if (memory_leak == 0) {
-                    int memory_safe = run(out_dirname, sorted_programs[i]->d_name, out_ext, prog_dirname,
-                        base_exec, pipe, exec_len, check_leak);
-                    success_count += compare(base_comp_len, sorted_programs[i]->d_name,
-                        base_comp, out_dirname, out_ext, exp_dirname);
+                    int memory_safe = run(&c, sorted_programs[i]->d_name, exec_len, check_leak);
+                    success_count += compare(&c, base_comp_len, sorted_programs[i]->d_name);
                     free(sorted_programs[i]);
                     if (memory_safe == 0)
                         memory_leak = 1;
@@ -340,8 +338,7 @@ int main (int argc, char** argv) {
             #pragma omp parallel for if (sequential == 0)
             for (int i = 0; i < n; i++) {
                 if (memory_leak == 0) {
-                    int memory_safe = run(out_dirname, sorted_programs[i]->d_name, out_ext,
-                        prog_dirname, base_exec, pipe, exec_len, check_leak);
+                    int memory_safe = run(&c, sorted_programs[i]->d_name, exec_len, check_leak);
                     if (memory_safe == 0)
                         memory_leak = 1;
                 }
@@ -352,14 +349,13 @@ int main (int argc, char** argv) {
     }
     if (sequential != -1) {
         for (int i = 0; i < n; i++) {
-            success_count += compare(base_comp_len, sorted_programs[i]->d_name,
-                base_comp, out_dirname, out_ext, exp_dirname);
+            success_count += compare(&c, base_comp_len, sorted_programs[i]->d_name);
             free(sorted_programs[i]);
         }
     }
     free(sorted_programs);
     unsigned long after = microseconds();
-    printf("Successful: %d/%d. Run time: %lums. Total time: %lums.\n",
+    printf("Successful: %d/%d. Run time: %luus. Total time: %luus.\n",
         success_count, n, after - before_run, after - before);
     return 0;
 }

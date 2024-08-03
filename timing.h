@@ -1,5 +1,5 @@
 // I'm not sure who the author of this was. I grabbed it from a repo of a
-// course assignment. I don't remember writing it, so my guess is that
+// course assignment. I don't remember writing it (not that I would), so my guess is that
 // it was Troels Henriksen, associate professor at the University of Copenhagen.
 
 #ifndef TIMING_H
