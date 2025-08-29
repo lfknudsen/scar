@@ -1,5 +1,5 @@
 # scar
-An interpreter for a small programming language which I've dubbed "Scar".
+A work-in-progress interpreter for a small programming language which I've dubbed "Scar".
 
 ## The Language
 Scar is a small, statically-typed language with pass-by-value function calls.
@@ -53,4 +53,3 @@ DFA and minimising it, and so on.
 The casual nature of the project also means I didn't give the language
 too much thought. I don't imagine I'll develop this interpreter beyond turing
 completeness.
-
